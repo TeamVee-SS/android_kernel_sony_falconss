@@ -4,7 +4,7 @@
 
 obj-$(CONFIG_IBM_ASM)		+= ibmasm/
 obj-$(CONFIG_AD525X_DPOT)	+= ad525x_dpot.o
-obj-$(CONFIG_AD525X_DPOT_I2C)	+= ad525x_dpot-i2c.o
+obj-$(CONFIG_AD525X_DPOT5_I2C)	+= ad525x_dpot-i2c.o
 obj-$(CONFIG_AD525X_DPOT_SPI)	+= ad525x_dpot-spi.o
 obj-$(CONFIG_INTEL_MID_PTI)	+= pti.o
 obj-$(CONFIG_ATMEL_PWM)		+= atmel_pwm.o
@@ -71,4 +71,5 @@ obj-$(CONFIG_QSEECOM) += qseecom.o
 obj-$(CONFIG_QFP_FUSE) += qfp_fuse.o
 obj-$(CONFIG_TI_DRV2667) += ti_drv2667.o
 obj-$(CONFIG_QPNP_MISC) += qpnp-misc.o
+obj-$(CONFIG_USR_RESET_WARNING) += usr-reset-warning.o
 obj-$(CONFIG_ARIMA_GPS_ELNA)	+= gps_elna.o
