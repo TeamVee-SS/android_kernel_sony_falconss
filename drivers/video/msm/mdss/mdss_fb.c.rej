@@ -1,0 +1,10 @@
+diff a/drivers/video/msm/mdss/mdss_fb.c b/drivers/video/msm/mdss/mdss_fb.c	(rejected hunks)
+@@ -1832,6 +1854,8 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
+ 		if (ret)
+ 			pr_err("pan display failed %x on fb%d\n", ret,
+ 					mfd->index);
++		atomic_set(&mfd->kickoff_pending, 0);
++		wake_up_all(&mfd->kickoff_wait_q);
+ 	}
+ 	if (!ret)
+ 		mdss_fb_update_backlight(mfd);
