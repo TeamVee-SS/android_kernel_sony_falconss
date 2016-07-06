@@ -1,0 +1,6 @@
+sudo: false
+language: c
+cache: ccache
+script:
+- git clone -b "google_gcc" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
+- source build.sh <<< "121314q"
