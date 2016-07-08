@@ -457,7 +457,11 @@ persistent_ram_init_ringbuffer(struct device *dev, bool ecc)
 	return __persistent_ram_init(dev, ecc);
 }
 
+#ifdef CONFIG_OF
+int __devinit persistent_ram_early_init(struct persistent_ram *ram)
+#else
 int __init persistent_ram_early_init(struct persistent_ram *ram)
+#endif
 {
 	int ret;
 
