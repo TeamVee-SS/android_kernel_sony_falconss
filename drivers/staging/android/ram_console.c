@@ -16,6 +16,7 @@
 #include <linux/console.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/persistent_ram.h>
 #include <linux/platform_device.h>
 #include <linux/proc_fs.h>
@@ -50,10 +51,58 @@ void ram_console_enable_console(int enabled)
 		ram_console.flags &= ~CON_ENABLED;
 }
 
+#ifdef CONFIG_OF
+static char ram_console_name[32];
+
+static struct persistent_ram_descriptor ram_console_desc = {
+	.name = ram_console_name,
+	.size = 0
+};
+
+static struct persistent_ram ram_console_ram = {
+	.start = 0,
+	.size = 0,
+	.num_descs = 1,
+	.descs = &ram_console_desc,
+};
+#endif
+
 static int __devinit ram_console_probe(struct platform_device *pdev)
 {
+#ifdef CONFIG_OF
 	struct ram_console_platform_data *pdata = pdev->dev.platform_data;
+#else
+	struct ram_console_platform_data *pdata;
+#endif
 	struct persistent_ram_zone *prz;
+
+#ifdef CONFIG_OF
+	int of_ret = 0;
+	u32 of_val[2];
+
+	if (pdev->dev.of_node) {
+		dev_dbg(&pdev->dev, "device tree enabled\n");
+		pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+		if (!pdata) {
+			pr_err("%s: unable to allocate platform data\n", __func__);
+			return -ENOMEM;
+		}
+
+		of_ret = of_property_read_u32_array(pdev->dev.of_node, "qcom,memory-fixed", of_val, 2);
+		if (of_ret) {
+			pr_err("%s: device tree configuration error\n", __func__);
+			return -EFAULT;
+		}
+
+		strncpy(ram_console_name, dev_name(&pdev->dev), sizeof(ram_console_name)-1);
+		ram_console_desc.size = of_val[1];
+		ram_console_ram.start = of_val[0];
+		ram_console_ram.size = of_val[1];
+		persistent_ram_early_init(&ram_console_ram);
+	} else {
+		pdata = pdev->dev.platform_data;
+	}
+#endif
 
 	prz = persistent_ram_init_ringbuffer(&pdev->dev, true);
 	if (IS_ERR(prz))
@@ -74,9 +123,20 @@ static int __devinit ram_console_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+static struct of_device_id ram_console_dt_match[] = {
+	{	.compatible = "qcom,ram-console",
+	},
+	{}
+};
+#else
+#define match_table NULL
+#endif
+
 static struct platform_driver ram_console_driver = {
 	.driver		= {
 		.name	= "ram_console",
+		.of_match_table = ram_console_dt_match,
 	},
 	.probe = ram_console_probe,
 };
