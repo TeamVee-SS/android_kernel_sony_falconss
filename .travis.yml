@@ -2,5 +2,61 @@ sudo: false
 language: c
 cache: ccache
 script:
-- git clone -b "google_gcc" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
-- source build.sh <<< "121314q"
+#
+# Travis CI Script by Caio Oliveira aka Caio99BR <caiooliveirafarias0@gmail.com>
+#
+
+#
+# Toolchain Choice
+# This will clone TeamVee Prebuilt Toolchains in directory described in build.sh
+#
+# Branchs available is:
+# Google Branch is "google_gcc" | (1) 4.7 / (2) 4.8
+# Linaro Branch is "linaro_gcc" | (1) 4.8.4 / (2) 4.9.4
+
+# Toolchain branch select here is Google 4.7
+- export ntoolchainbranch="google_gcc"
+- git clone -b "${ntoolchainbranch}" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
+
+# ${ntoolchainchoice} is your Toolchain Choice
+- export ntoolchainchoice="1"
+
+# ${ntoolchain}
+# "4" is "Toolchain Choice"
+- ntoolchain="4${ntoolchainchoice}"
+
+# ${ndevice}
+# "2" is "Clean Kernel"
+# "3" is "Device Choice"
+- ndevice="23"
+
+# ${ndevicechoice} is "Number of Choice under Device Choice"
+# - export ndevicechoice="#"
+
+# ${nbuild}
+# "6" is "Build Kernel"
+# "7" is "Zip the kernel and Modules"
+# "q" is to Exit of Script
+- nbuild="67q"
+
+# Main variables
+# Call of 'build.sh'
+# - source build.sh <<< "${ndevice}${ndevicechoice}${ntoolchain}${nbuild}"
+
+# Export of zipfile to deploy
+# - export zipfile#="${zipfile}"
+
+# Build for Sony Xperia E1 (Single/Dual/DTV) | D2004 D2005 D2104 D2015 D2114
+- export ndevicechoice="1"
+- source build.sh <<< "${ndevice}${ndevicechoice}${ntoolchain}${nbuild}"
+- export zipfile1="${zipfile}"
+# TODO: Add deployment to GitHub Releases
+#deploy:
+#  provider: releases
+#  skip_cleanup: true
+#  api_key:
+#    secure: ""
+#  file:
+#    - "zip-creator/${zipfile1}"
+#  on:
+#    tags: true
