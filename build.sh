@@ -119,8 +119,9 @@ else
 	make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}"
 	if ! [ "$?" == "0" ]
 	then
+		exit_code=$?
 		echo "  | ${color_red}Build Failed! Exiting...${color_stock}"
-		break
+		exit ${exit_code}
 	fi
 	sleep 2
 	build_time=$(($(date +"%s") - ${start_build_time}))
