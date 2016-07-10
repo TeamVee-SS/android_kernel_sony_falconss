@@ -142,7 +142,8 @@ then
 		mkdir -p ${zip_out}/META-INF/com/google/android/
 
 		# Making DT Image to Live Ramdisk
-		./zip-creator/base/dtbToolCM -2 -s 2048 -p scripts/dtc/ arch/${ARCH}/boot/ -o ${zip_out}/dt.img
+		chmod a+x zip-creator/base/dtbToolCM
+		./zip-creator/base/dtbToolCM -2 -s 2048 -p scripts/dtc/ arch/${ARCH}/boot/ -o ${zip_out}/dt.img &> /dev/null
 
 		cp zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
 		cp zip-creator/base/mkbootimg ${zip_out}/
