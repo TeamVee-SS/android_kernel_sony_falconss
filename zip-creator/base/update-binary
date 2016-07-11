@@ -40,25 +40,6 @@ ui_print "${builder} Presents"
 ui_print "${custom_kernel} for ${device_name}"
 ui_print "${release}"
 
-# Desmount /system if user mounted it before
-if [ $(mount | grep /system | wc -l) -ge 1 ]
-then
-	_mounted_system_before="true"
-	umount /system
-fi
-mount /system
-
-# Delete all old modules
-rm -rf /system/lib/modules/*
-
-# Copy new modules
-cp ${working_dir}/modules/*.ko /system/lib/modules/
-mv /system/lib/modules/wlan.ko /system/lib/modules/pronto/pronto_wlan.ko
-ln -s /system/lib/modules/pronto/pronto_wlan.ko /system/lib/modules/wlan.ko
-
-# Add permissions to modules
-chmod 644 /system/lib/modules/*.ko /system/lib/modules/pronto/pronto_wlan.ko
-
 # Set original boot
 boot_partition="/dev/block/platform/msm_sdcc.1/by-name/boot"
 original_boot_image="${working_dir}/boot.img"
@@ -94,13 +75,6 @@ ${working_dir}/mkbootimg \
 
 # Flash new boot.img
 dd if=${new_boot_image} of=${boot_partition}
-
-# Umount /system if user NOT mounted it before
-if [ ! "${_mounted_system_before}" == "true" ]
-then
-	umount /system
-fi
-unset _mounted_system_before
 
 # Clean working ${working_dir} folder
 rm -rf ${working_dir}/

@@ -154,10 +154,6 @@ then
 		echo "${device_name}" >> ${zip_out}/device.prop
 		echo "Release ${release}" >> ${zip_out}/device.prop
 
-		mkdir ${zip_out}/modules
-		find . -name *.ko | xargs cp -a --target-directory=${zip_out}/modules/ &> /dev/null
-		${CROSS_COMPILE}strip --strip-unneeded ${zip_out}/modules/*.ko
-
 		cd ${zip_out}
 		zip -r ${zipfile} * -x .gitignore &> /dev/null
 		cd ..
