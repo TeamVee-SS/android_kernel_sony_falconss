@@ -25,6 +25,7 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
+#include <linux/persistent_ram.h>
 #include <asm/mach/map.h>
 #include <asm/arch_timer.h>
 #include <asm/hardware/gic.h>
@@ -50,6 +51,7 @@
 #include "spm.h"
 #include "pm.h"
 #include "modem_notifier.h"
+#include "board-8610-console.h"
 
 static struct of_dev_auxdata msm8610_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
@@ -68,9 +70,57 @@ static void __init msm8610_early_memory(void)
 	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
 }
 
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+#define MSM_PERSISTENT_RAM_SIZE (SZ_1M)
+#define MSM_RAM_CONSOLE_SIZE (128 * SZ_1K)
+
+static struct persistent_ram_descriptor pr_desc = {
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	.name = "ram_console",
+	.size = MSM_RAM_CONSOLE_SIZE
+#endif
+};
+
+static struct persistent_ram msm_pram = {
+	.size = MSM_PERSISTENT_RAM_SIZE,
+	.num_descs = 1,
+	.descs = &pr_desc
+};
+
+static void reserve_persistent_ram(void)
+{
+	struct membank *mb = &meminfo.bank[meminfo.nr_banks - 1];
+	unsigned long bank_end = mb->start + mb->size;
+
+	msm_pram.start = bank_end - MSM_PERSISTENT_RAM_SIZE;
+	persistent_ram_early_init(&msm_pram);
+}
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct platform_device ram_console_device = {
+	.name           = "ram_console",
+	.id             = -1,
+	.dev = {
+		.platform_data = &ram_console_pdata,
+	}
+};
+#endif
+
 static void __init msm8610_reserve(void)
 {
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+	reserve_persistent_ram();
+#endif
+
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+}
+
+void __init msm8610_add_devices(void)
+{
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	platform_device_register(&ram_console_device);
+#endif
 }
 
 void __init msm8610_add_drivers(void)
@@ -101,6 +151,7 @@ void __init msm8610_init(void)
 
 	msm8610_init_gpiomux();
 	board_dt_populate(adata);
+	msm8610_add_devices();
 	msm8610_add_drivers();
 }
 

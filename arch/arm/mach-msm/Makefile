@@ -293,6 +293,10 @@ obj-$(CONFIG_ARCH_MSM8226) += board-8226.o board-8226-gpiomux.o
 obj-$(CONFIG_ARCH_MSM8226) += clock-local2.o clock-pll.o clock-8226.o clock-rpm.o clock-voter.o clock-mdss-8974.o
 obj-$(CONFIG_ARCH_MSM8226) += acpuclock-8226.o acpuclock-cortex.o
 obj-$(CONFIG_ARCH_MSM8610) += board-8610.o
+obj-$(CONFIG_ARCH_MSM8610) += board-8610-console.o
+
+CFLAGS_board-8610-console.o += -Idrivers/staging/android
+
 ifndef CONFIG_MACH_SONY_FALCONSS
 	obj-$(CONFIG_ARCH_MSM8610) += board-8610-gpiomux.o
 endif
