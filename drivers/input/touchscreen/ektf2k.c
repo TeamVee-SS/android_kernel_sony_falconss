@@ -2204,7 +2204,6 @@ static void elan_ktf2k_ts_work_func(struct work_struct *work)
 	chip_reset_flag = 0;
 
 	if (gpio_get_value(ts->intr_gpio)) {
-		pr_info("[ELAN] Detected the jitter on INT pin\n");
 		enable_irq(ts->client->irq);
 		return;
 	}
@@ -2212,7 +2211,6 @@ static void elan_ktf2k_ts_work_func(struct work_struct *work)
 	rc = elan_ktf2k_ts_recv_data(ts->client, buf,4+PACKET_SIZE);
 
 	if (rc < 0) {
-		pr_info("[ELAN] Received the packet Error.\n");
 		enable_irq(ts->client->irq);
 		return;
 	}
