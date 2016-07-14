@@ -54,6 +54,10 @@
 #include "modem_notifier.h"
 #include "board-8610-console.h"
 
+#ifdef CONFIG_KEXEC_HARDBOOT
+#include <linux/memblock.h>
+#endif
+
 static struct of_dev_auxdata msm8610_auxdata_lookup[] __initdata = {
 	OF_DEV_AUXDATA("qcom,msm-sdcc", 0xF9824000, \
 			"msm_sdcc.1", NULL),
@@ -109,12 +113,30 @@ static struct platform_device ram_console_device = {
 };
 #endif
 
+#ifdef CONFIG_KEXEC_HARDBOOT
+static void reserve_kexec_hardboot(void)
+{
+	// Reserve space for hardboot page - just after ram_console,
+	struct membank* bank = &meminfo.bank[0];
+	phys_addr_t start = bank->start + bank->size - SZ_1M - MSM_PERSISTENT_RAM_SIZE;
+
+	int ret = memblock_remove(start, SZ_1M);
+	if(!ret)
+		pr_info("%s: Hardboot page reserved at 0x%X\n", __func__, start);
+	else
+		pr_err("%s: Failed to reserve space for hardboot page at 0x%X\n", __func__, start);
+}
+#endif
+
 static void __init msm8610_reserve(void)
 {
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
 	reserve_persistent_ram();
 #endif
 	of_scan_flat_dt(dt_scan_for_memory_reserve, NULL);
+#ifdef CONFIG_KEXEC_HARDBOOT
+	reserve_kexec_hardboot();
+#endif
 }
 
 void __init msm8610_add_devices(void)
