@@ -1,4 +1,4 @@
-/* arch/arm/mach-msm/board-8974-console.c
+/* arch/arm/mach-msm/board-8610-console.c
  *
  * Copyright (C) 2013 Sony Mobile Communications AB.
  * Copyright (C) 2016 Caio Oliveira <caiooliveirafarias0@gmail.com>
