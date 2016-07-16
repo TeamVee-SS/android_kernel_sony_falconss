@@ -68,7 +68,6 @@ ${working_dir}/mkbootimg \
 --pagesize 2048 \
 --ramdisk "${original_boot_ramdisk}" \
 --cmdline "${original_boot_cmdline}" \
---base "${original_boot_base}" \
 --kernel "${new_boot_zImage}" \
 --dt "${new_boot_dt}" \
 -o "${new_boot_image}"

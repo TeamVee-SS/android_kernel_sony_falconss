@@ -136,7 +136,9 @@ then
 	then
 		echo "${x} | Ziping ${builder} ${custom_kernel} ${custom_kernel_branch}"
 
-		zip_out="zip-creator_out"
+		# Make base of zip
+		original_dir=$(pwd)
+		zip_out="/tmp/zip-creator_out"
 		rm -rf ${zip_out}
 		mkdir -p ${zip_out}/META-INF/com/google/android/
 
@@ -144,20 +146,24 @@ then
 		chmod a+x zip-creator/base/dtbToolCM
 		./zip-creator/base/dtbToolCM -2 -s 2048 -p scripts/dtc/ arch/${ARCH}/boot/ -o ${zip_out}/dt.img &> /dev/null
 
+		# Copy core files
 		cp zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
 		cp zip-creator/base/mkbootimg ${zip_out}/
 		cp zip-creator/base/unpackbootimg ${zip_out}/
 		cp arch/${ARCH}/boot/zImage ${zip_out}/
 
+		# Set device
 		echo "${builder}" >> ${zip_out}/device.prop
 		echo "${custom_kernel} ${custom_kernel_branch}" >> ${zip_out}/device.prop
 		echo "${device_name}" >> ${zip_out}/device.prop
 		echo "Release ${release}" >> ${zip_out}/device.prop
 
+		# Pack zip
 		cd ${zip_out}
 		zip -r ${zipfile} * -x .gitignore &> /dev/null
-		cd ..
+		cd ${original_dir}
 
+		# Copy the zip created
 		cp ${zip_out}/${zipfile} zip-creator/
 		rm -rf ${zip_out}
 	else
@@ -174,16 +180,7 @@ if [ -f .config ]
 then
 	if [[ "${device_defconfig}" == "${1}" || "${device_name}" == "${1}" ]]
 	then
-		if [ $(cat arch/${ARCH}/configs/${device_defconfig} | grep "Automatically" | wc -l) == "0" ]
-		then
-			defconfig_format="a | Default Linux Kernel format  | Small"
-		else
-			defconfig_format="b | Usual copy of .config format | Complete"
-		fi
-		echo "  | Update defconfig from:"
-		echo "${defconfig_format}"
-		echo
-		echo "  | to:"
+		echo "  | Update defconfig to:"
 		echo "a | Default Linux Kernel format  | Small"
 		echo "b | Usual copy of .config format | Complete"
 		echo
