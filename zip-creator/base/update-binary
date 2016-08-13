@@ -50,8 +50,20 @@ dd if=${boot_partition} of=${original_boot_image}
 # Unpack current ramdisk from original boot.img
 ${working_dir}/unpackbootimg ${original_boot_image}
 
+# Let's mod the cmdline
+boot_cmdline=$(cat ${working_dir}/boot.img-cmdline)
+if [ $(echo "${boot_cmdline}" | grep "androidboot.bootdevice=msm_sdcc.1" | wc -l) == "0" ]
+then
+	new_booboot_cmdline="${boot_cmdline} androidboot.bootdevice=msm_sdcc.1"
+	boot_cmdline="${new_booboot_cmdline}"
+fi
+if [ $(echo "${boot_cmdline}" | grep "androidboot.selinux=permissive" | wc -l) == "0" ]
+then
+	new_booboot_cmdline="${boot_cmdline} androidboot.selinux=permissive"
+	boot_cmdline="${new_booboot_cmdline}"
+fi
+
 # Set original files
-original_boot_cmdline=$(cat ${working_dir}/boot.img-cmdline)
 original_boot_base=$(cat ${working_dir}/boot.img-base)
 original_boot_ramdisk="${working_dir}/boot.img-ramdisk.gz"
 
@@ -67,7 +79,7 @@ ${working_dir}/mkbootimg \
 --tags_offset 0x01E00000 \
 --pagesize 2048 \
 --ramdisk "${original_boot_ramdisk}" \
---cmdline "${original_boot_cmdline}" \
+--cmdline "${boot_cmdline}" \
 --kernel "${new_boot_zImage}" \
 --dt "${new_boot_dt}" \
 -o "${new_boot_image}"
