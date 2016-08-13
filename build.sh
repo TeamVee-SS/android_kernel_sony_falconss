@@ -158,6 +158,16 @@ then
 		echo "${device_name}" >> ${zip_out}/device.prop
 		echo "Release ${release}" >> ${zip_out}/device.prop
 
+		# Stock need new firmware files
+		mkdir -p ${zip_out}/wifi/
+		cp drivers/staging/prima/firmware_bin/WCNSS_cfg.dat ${zip_out}/wifi/
+		cp drivers/staging/prima/firmware_bin/WCNSS_qcom_cfg.ini ${zip_out}/wifi/
+
+		# We need modules
+		mkdir ${zip_out}/modules
+		find . -name *.ko | xargs cp -a --target-directory=${zip_out}/modules/ &> /dev/null
+		${CROSS_COMPILE}strip --strip-unneeded ${zip_out}/modules/*.ko
+
 		# Pack zip
 		cd ${zip_out}
 		zip -r ${zipfile} * -x .gitignore &> /dev/null
@@ -232,7 +242,7 @@ then
 	# Main Variables
 	custom_kernel=SSProj-CAFKernel
 	builder=TeamVee-SS
-	custom_kernel_branch=KK
+	custom_kernel_branch=KK-Stock
 	ARCH=arm
 
 	while true
