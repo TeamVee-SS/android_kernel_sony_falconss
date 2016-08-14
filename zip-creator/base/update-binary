@@ -87,7 +87,7 @@ ${working_dir}/mkbootimg \
 # Flash new boot.img
 dd if=${new_boot_image} of=${boot_partition}
 
-# Desmount /system if user NOT mounted it before
+# Mount /system if user NOT mounted it before
 if [ ! $(mount | grep /system | wc -l) -ge 1 ]
 then
 	mount /system
@@ -109,13 +109,13 @@ chmod 644 /system/lib/modules/wlan.ko /system/lib/modules/pronto/pronto_wlan.ko
 cp ${working_dir}/wifi/WCNSS_cfg.dat /system/etc/firmware/wlan/prima/
 busybox chmod 644 /system/etc/firmware/wlan/prima/WCNSS_cfg.dat
 
-# Desmount /data if user NOT mounted it before
+# Mount /data if user NOT mounted it before
 if [ ! $(mount | grep /data | wc -l) -ge 1 ]
 then
 	mount /data
 fi
 
-cp ${working_dir}/wifi/WCNSS_qcom_* /data/misc/wifi/WCNSS_qcom_cfg.ini
+cp ${working_dir}/wifi/WCNSS_qcom_cfg.ini /data/misc/wifi/
 busybox chmod 660 /data/misc/wifi/WCNSS_qcom_cfg.ini
 
 # Clean working ${working_dir} folder
