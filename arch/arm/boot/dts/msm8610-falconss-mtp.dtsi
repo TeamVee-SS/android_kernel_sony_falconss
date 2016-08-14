@@ -15,7 +15,7 @@
 		status = "ok";
 	};
 
-	i2c@f9923000{
+	i2c@f9923000 {
 		atmel_mxt_ts@4a {
 		compatible = "atmel,mxt-ts";
 		reg = <0x4a>;
@@ -92,7 +92,7 @@
 			synaptics,disable-gpios;
 		};
 
-		elan_ktf2k_ts@15{
+		elan_ktf2k_ts@15 {
 			compatible = "elan,ktf2k_ts";
 			reg = <0x15>;
 			interrupt-parent = <&msmgpio>;
@@ -200,7 +200,7 @@
 	};
 
 	spi@f9926000 {
-		nmi325@0{
+		nmi325@0 {
 			compatible = "nmi,nmispi";
 			reg = <0>;
 			spi-max-frequency = <5000000>;
@@ -268,14 +268,6 @@
 		qcom,cont-splash-enabled;
 	};
 
-	qcom,mdss_dsi_hx8379a_wvga_video {
-		qcom,cont-splash-enabled;
-	};
-
-	qcom,mdss_dsi_otm8018b_fwvga_video {
-		qcom,cont-splash-enabled;
-	};
-
 	gps_elna {
 		compatible = "arima,gps_elna";
 		elna,enable-gpio = <&msmgpio 63 0x00>;
@@ -284,8 +276,8 @@
 	};
 };
 
-&i2c_cdc  {
-	msm8x10_wcd_codec@0d{
+&i2c_cdc {
+	msm8x10_wcd_codec@0d {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x0d>;
 
@@ -327,20 +319,66 @@
 		qcom,cdc-micbias1-ext-cap;
 	};
 
-	msm8x10_wcd_codec@77{
+	msm8x10_wcd_codec@77 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x77>;
 	};
 
-	msm8x10_wcd_codec@66{
+	msm8x10_wcd_codec@66 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x66>;
 	};
 
-	msm8x10_wcd_codec@55{
+	msm8x10_wcd_codec@55 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x55>;
 	};
+};
+
+&i2c {
+	qcom,camera@78 {
+		compatible = "qcom,s5k5ca";
+		reg = <0x78>;
+		qcom,slave-id = <0x78 0x0f12 0x05ca>;
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index = <0>;
+		qcom,mount-angle = <90>;
+		qcom,sensor-name = "s5k5ca";
+		cam_vdig-supply = <&pm8110_l2>;
+		cam_vana-supply = <&pm8110_l19>;
+		cam_vio-supply = <&pm8110_l14>;
+		qcom,cam-vreg-name = "cam_vdig", "cam_vio", "cam_vana";
+		qcom,cam-vreg-type = <0 0 0>;
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2850000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2850000>;
+		qcom,cam-vreg-op-mode = <200000 80000 80000>;
+		qcom,gpio-no-mux = <0>;
+		gpios = <&msmgpio 8 0>,
+			<&msmgpio 9 0>,
+			<&msmgpio 13 0>,
+			<&msmgpio 21 0>,
+			<&msmgpio 84 0>,
+			<&msmgpio 85 0>;
+		qcom,gpio-reset = <4>;
+		qcom,gpio-standby = <5>;
+		qcom,gpio-req-tbl-num = <0 1 2 3 4 5>;
+		qcom,gpio-req-tbl-flags = <1 1 1 1 1 1>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK",
+					  "CAM_1V8_EN",
+					  "CAM_2V8_EN",
+					  "CAM_RESET",
+					  "CAM_ID",
+					  "CAM_STANDBY";
+		qcom,gpio-set-tbl-num = <1 1>;
+		qcom,gpio-set-tbl-flags = <0 2>;
+		qcom,gpio-set-tbl-delay = <1000 4000>;
+		qcom,csi-lane-assign = <0xe4>;
+		qcom,csi-lane-mask = <0x3>;
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+	};
+
 };
 
 &spmi_bus {

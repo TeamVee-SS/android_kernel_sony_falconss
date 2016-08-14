@@ -85,4 +85,4 @@
 	};
 };
 
-/include/ "msm8610-falconss-mdss-panels.dtsi"
+/include/ "dsi-panel-truly-wvga-video-falconss.dtsi"

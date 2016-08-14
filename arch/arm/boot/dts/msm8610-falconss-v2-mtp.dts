@@ -14,8 +14,6 @@
 
 /include/ "msm8610-falconss-v2.dtsi"
 /include/ "msm8610-falconss-mtp.dtsi"
-/include/ "dsi-v2-panel-hx8379a-wvga-video-falconss.dtsi"
-/include/ "msm8610-falconss-camera-sensor-cdp-mtp.dtsi"
 
 / {
 	model = "Qualcomm MSM 8610v2 MTP";

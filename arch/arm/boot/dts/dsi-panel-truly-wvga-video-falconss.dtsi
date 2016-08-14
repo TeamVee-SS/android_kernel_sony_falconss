@@ -142,3 +142,5 @@
 		qcom,mdss-pan-physical-height-dimension = <86>;
 	};
 };
+
+/include/ "dsi-panel-truly-wvga-cmd.dtsi"
