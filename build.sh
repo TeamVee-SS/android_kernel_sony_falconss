@@ -245,7 +245,7 @@ then
 	# Main Variables
 	custom_kernel=SSProj-CAFKernel
 	builder=TeamVee-SS
-	custom_kernel_branch=KK
+	custom_kernel_branch=KK-Stock
 	ARCH=arm
 
 	while true
