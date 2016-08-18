@@ -137,35 +137,49 @@ then
 		echo "${x} | Ziping ${builder} ${custom_kernel} ${custom_kernel_branch}"
 
 		# Make base of zip
-		original_dir=$(pwd)
 		zip_out="/tmp/zip-creator_out"
-		rm -rf ${zip_out}
+		rm -rf ${zip_out}/
 		mkdir -p ${zip_out}/META-INF/com/google/android/
 
 		# Making DT Image to Live Ramdisk
-		chmod a+x zip-creator/base/dtbToolCM
-		./zip-creator/base/dtbToolCM -2 -s 2048 -p scripts/dtc/ arch/${ARCH}/boot/ -o ${zip_out}/dt.img &> /dev/null
+		chmod a+x ${original_dir}/zip-creator/base/dtbToolCM
+		${original_dir}/zip-creator/base/dtbToolCM -2 -s 2048 -p ${original_dir}/scripts/dtc/ ${original_dir}/arch/${ARCH}/boot/ -o ${zip_out}/dt.img
 
 		# Copy core files
-		cp zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
-		cp zip-creator/base/mkbootimg ${zip_out}/
-		cp zip-creator/base/unpackbootimg ${zip_out}/
-		cp arch/${ARCH}/boot/zImage ${zip_out}/
+		cp ${original_dir}/zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
+		cp ${original_dir}/zip-creator/base/mkbootimg ${zip_out}/
+		cp ${original_dir}/zip-creator/base/unpackbootimg ${zip_out}/
+		cp ${original_dir}/arch/${ARCH}/boot/zImage ${zip_out}/
 
 		# Set device
 		echo "${builder}" >> ${zip_out}/device.prop
 		echo "${custom_kernel} ${custom_kernel_branch}" >> ${zip_out}/device.prop
 		echo "${device_name}" >> ${zip_out}/device.prop
 		echo "Release ${release}" >> ${zip_out}/device.prop
+		echo "${custom_kernel_branch}" >> ${zip_out}/device.prop
+
+		# Stock edition
+		if [ "${custom_kernel_branch}" == "KK-Stock" ]
+		then
+			# Stock need new firmware files
+			mkdir -p ${zip_out}/wifi/
+			cp ${original_dir}/drivers/staging/prima/firmware_bin/WCNSS_cfg.dat ${zip_out}/wifi/
+			cp ${original_dir}/drivers/staging/prima/firmware_bin/WCNSS_qcom_cfg.ini ${zip_out}/wifi/
+
+			# We need modules
+			mkdir -p ${zip_out}/modules/
+			find . -name *.ko | xargs cp -a --target-directory=${zip_out}/modules/ &> /dev/null
+			${CROSS_COMPILE}strip --strip-unneeded ${zip_out}/modules/*.ko
+		fi
 
 		# Pack zip
-		cd ${zip_out}
+		cd ${zip_out}/
 		zip -r ${zipfile} * -x .gitignore &> /dev/null
-		cd ${original_dir}
+		cd ${original_dir}/
 
 		# Copy the zip created
-		cp ${zip_out}/${zipfile} zip-creator/
-		rm -rf ${zip_out}
+		cp ${zip_out}/${zipfile} ${original_dir}/zip-creator/
+		rm -rf ${zip_out}/
 	else
 		wrong_choice
 	fi
@@ -222,6 +236,8 @@ then
 	echo "  | Please do not use ${0} to run this script, just use '. build.sh'"
 elif [ -e build.sh ]
 then
+	# Set ${original_dir}
+	original_dir=$(pwd)
 	# Stock Color
 	color_stock=$(tput sgr0)
 	# Bold Colors

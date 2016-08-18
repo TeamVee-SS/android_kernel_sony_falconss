@@ -25,35 +25,47 @@ cd ${working_dir}/
 
 # Unzip current zipfile
 unzip "${zipfile}"
-chmod 777 ${working_dir}/unpackbootimg
-chmod 777 ${working_dir}/mkbootimg
+chmod 777 ${working_dir}/unpackbootimg ${working_dir}/mkbootimg
 
 # Get device.prop values
 builder=$(sed -n "1p" "${working_dir}/device.prop")
 custom_kernel=$(sed -n "2p" "${working_dir}/device.prop")
 device_name=$(sed -n "3p" "${working_dir}/device.prop")
 release=$(sed -n "4p" "${working_dir}/device.prop")
+custom_kernel_branch=$(sed -n "5p" "${working_dir}/device.prop")
 
 # Initial Print
 ui_print
 ui_print "${builder} Presents"
 ui_print "${custom_kernel} for ${device_name}"
-ui_print "${release}"
+ui_print "${release} for ${custom_kernel_branch}"
 
 # Set original boot
 boot_partition="/dev/block/platform/msm_sdcc.1/by-name/boot"
-original_boot_image="${working_dir}/boot.img"
+boot_image="${working_dir}/boot.img"
 
 # Pickup original boot.img to use only current ramdisk
-dd if=${boot_partition} of=${original_boot_image}
+dd if=${boot_partition} of=${boot_image}
 
 # Unpack current ramdisk from original boot.img
-${working_dir}/unpackbootimg ${original_boot_image}
+${working_dir}/unpackbootimg ${boot_image}
+
+# Let's mod the cmdline
+boot_cmdline=$(cat ${working_dir}/boot.img-cmdline)
+if [ $(echo "${boot_cmdline}" | grep "androidboot.bootdevice=msm_sdcc.1" | wc -l) == "0" ]
+then
+	new_booboot_cmdline="${boot_cmdline} androidboot.bootdevice=msm_sdcc.1"
+	boot_cmdline="${new_booboot_cmdline}"
+fi
+if [ $(echo "${boot_cmdline}" | grep "androidboot.selinux=permissive" | wc -l) == "0" ]
+then
+	new_booboot_cmdline="${boot_cmdline} androidboot.selinux=permissive"
+	boot_cmdline="${new_booboot_cmdline}"
+fi
 
 # Set original files
-original_boot_cmdline=$(cat ${working_dir}/boot.img-cmdline)
-original_boot_base=$(cat ${working_dir}/boot.img-base)
-original_boot_ramdisk="${working_dir}/boot.img-ramdisk.gz"
+boot_base=$(cat ${working_dir}/boot.img-base)
+boot_ramdisk="${working_dir}/boot.img-ramdisk.gz"
 
 # Set new files
 new_boot_zImage="${working_dir}/zImage"
@@ -62,18 +74,53 @@ new_boot_image="${working_dir}/newboot.img"
 
 # Make a new boot.img with current ramdisk
 ${working_dir}/mkbootimg \
---base 0x00000000 \
+--base "${boot_base}" \
 --ramdisk_offset 0x02000000 \
 --tags_offset 0x01E00000 \
 --pagesize 2048 \
---ramdisk "${original_boot_ramdisk}" \
---cmdline "${original_boot_cmdline}" \
+--ramdisk "${boot_ramdisk}" \
+--cmdline "${boot_cmdline}" \
 --kernel "${new_boot_zImage}" \
 --dt "${new_boot_dt}" \
 -o "${new_boot_image}"
 
 # Flash new boot.img
 dd if=${new_boot_image} of=${boot_partition}
+
+# Stock edition
+if [  "${custom_kernel_branch}" == "KK-Stock" ]
+then
+	# Mount /system if user NOT mounted it before
+	if [ $(mount | grep /system | wc -l) == "0" ]
+	then
+		mount /system
+	fi
+
+	# Delete all old modules
+	rm -rf /system/lib/modules/*
+	mkdir -p /system/lib/modules/pronto/
+
+	# Copy new wlan module
+	cp ${working_dir}/modules/wlan.ko /system/lib/modules/
+	mv /system/lib/modules/wlan.ko /system/lib/modules/pronto/pronto_wlan.ko
+	ln -s /system/lib/modules/pronto/pronto_wlan.ko /system/lib/modules/wlan.ko
+
+	# Add permissions to modules
+	chmod 644 /system/lib/modules/wlan.ko /system/lib/modules/pronto/pronto_wlan.ko
+
+	# Copy new wifi files
+	cp ${working_dir}/wifi/WCNSS_cfg.dat /system/etc/firmware/wlan/prima/
+	busybox chmod 644 /system/etc/firmware/wlan/prima/WCNSS_cfg.dat
+
+	# Mount /data if user NOT mounted it before
+	if [ $(mount | grep /data | wc -l) == "0" ]
+	then
+		mount /data
+	fi
+
+	cp ${working_dir}/wifi/WCNSS_qcom_cfg.ini /data/misc/wifi/
+	busybox chmod 660 /data/misc/wifi/WCNSS_qcom_cfg.ini
+fi
 
 # Clean working ${working_dir} folder
 rm -rf ${working_dir}/
