@@ -141,21 +141,12 @@ then
 		rm -rf ${zip_out}/
 		mkdir -p ${zip_out}/META-INF/com/google/android/
 
-		# Making DT Image to Live Ramdisk
-		chmod a+x ${original_dir}/zip-creator/base/dtbToolCM
-		${original_dir}/zip-creator/base/dtbToolCM -2 -s 2048 -p ${original_dir}/scripts/dtc/ ${original_dir}/arch/${ARCH}/boot/ -o ${zip_out}/dt.img
-
-		# Copy prebuilt if dtbToolCM fail
-		if ! [ -f ${zip_out}/dt.img ]
-		then
-			cp ${original_dir}/zip-creator/base/dt.img ${zip_out}/
-		fi
-
 		# Copy core files
 		cp ${original_dir}/zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
 		cp ${original_dir}/zip-creator/base/mkbootimg ${zip_out}/
 		cp ${original_dir}/zip-creator/base/unpackbootimg ${zip_out}/
 		cp ${original_dir}/arch/${ARCH}/boot/zImage ${zip_out}/
+		cp ${original_dir}/zip-creator/base/dt.img ${zip_out}/
 
 		# Set device
 		echo "${builder}" >> ${zip_out}/device.prop
