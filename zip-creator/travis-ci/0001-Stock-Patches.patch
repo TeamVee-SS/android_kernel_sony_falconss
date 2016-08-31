@@ -1,0 +1,280 @@
+From 4cfe5ae9db15db124e2f85b6996e70971d2e09a3 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caiooliveirafarias0@gmail.com>
+Date: Tue, 19 Jul 2016 20:46:11 -0300
+Subject: [PATCH 1/4] Revert "msm: display: Add pipe type selection in overlay
+ request"
+
+This reverts commit 0fbc05a5ff04a3c935c972ab4587b574f85621e1.
+---
+ drivers/video/msm/mdss/mdss_mdp_overlay.c | 30 +++++++-----------------------
+ include/linux/msm_mdp.h                   | 19 -------------------
+ 2 files changed, 7 insertions(+), 42 deletions(-)
+
+diff --git a/drivers/video/msm/mdss/mdss_mdp_overlay.c b/drivers/video/msm/mdss/mdss_mdp_overlay.c
+index d9505e9..4b81df9 100644
+--- a/drivers/video/msm/mdss/mdss_mdp_overlay.c
++++ b/drivers/video/msm/mdss/mdss_mdp_overlay.c
+@@ -409,33 +409,17 @@ static int mdss_mdp_overlay_pipe_setup(struct msm_fb_data_type *mfd,
+ 	}
+ 
+ 	if (req->id == MSMFB_NEW_REQUEST) {
+-		switch (req->pipe_type) {
+-                case PIPE_TYPE_VIG:
+-                        pipe_type = MDSS_MDP_PIPE_TYPE_VIG;
+-                        break;
+-                case PIPE_TYPE_RGB:
+-                        pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+-                        break;
+-                case PIPE_TYPE_DMA:
+-                        pipe_type = MDSS_MDP_PIPE_TYPE_DMA;
+-                        break;
+-                case PIPE_TYPE_AUTO:
+-                default:
+-                        if (req->flags & MDP_OV_PIPE_FORCE_DMA)
+-                                pipe_type = MDSS_MDP_PIPE_TYPE_DMA;
+-                        else if (fmt->is_yuv ||
+-                                (req->flags & MDP_OV_PIPE_SHARE))
+-                                pipe_type = MDSS_MDP_PIPE_TYPE_VIG;
+-                        else
+-                                pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+-                        break;
+-                }
++		if (req->flags & MDP_OV_PIPE_FORCE_DMA)
++			pipe_type = MDSS_MDP_PIPE_TYPE_DMA;
++		else if (fmt->is_yuv || (req->flags & MDP_OV_PIPE_SHARE))
++			pipe_type = MDSS_MDP_PIPE_TYPE_VIG;
++		else
++			pipe_type = MDSS_MDP_PIPE_TYPE_RGB;
+ 
+ 		pipe = mdss_mdp_pipe_alloc(mixer, pipe_type);
+ 
+ 		/* VIG pipes can also support RGB format */
+-		if ((req->pipe_type == PIPE_TYPE_AUTO) && !pipe &&
+-			(pipe_type == MDSS_MDP_PIPE_TYPE_RGB)) {
++		if (!pipe && pipe_type == MDSS_MDP_PIPE_TYPE_RGB) {
+ 			pipe_type = MDSS_MDP_PIPE_TYPE_VIG;
+ 			pipe = mdss_mdp_pipe_alloc(mixer, pipe_type);
+ 		}
+diff --git a/include/linux/msm_mdp.h b/include/linux/msm_mdp.h
+index 82254a3..137065d 100644
+--- a/include/linux/msm_mdp.h
++++ b/include/linux/msm_mdp.h
+@@ -554,23 +554,6 @@ struct mdp_scale_data {
+ };
+ 
+ /**
+- * enum mdp_overlay_pipe_type - Different pipe type set by userspace
+- *
+- * @PIPE_TYPE_AUTO:    Not specified, pipe will be selected according to flags.
+- * @PIPE_TYPE_VIG:     VIG pipe.
+- * @PIPE_TYPE_RGB:     RGB pipe.
+- * @PIPE_TYPE_DMA:     DMA pipe.
+- * @PIPE_TYPE_MAX:     Used to track maximum number of pipe type.
+- */
+-enum mdp_overlay_pipe_type {
+-        PIPE_TYPE_AUTO = 0,
+-        PIPE_TYPE_VIG,
+-        PIPE_TYPE_RGB,
+-        PIPE_TYPE_DMA,
+-        PIPE_TYPE_MAX,
+-};
+-
+-/**
+  * struct mdp_overlay - overlay surface structure
+  * @src:	Source image information (width, height, format).
+  * @src_rect:	Source crop rectangle, portion of image that will be fetched.
+@@ -592,7 +575,6 @@ enum mdp_overlay_pipe_type {
+  *		The color should be in same format as the source image format.
+  * @flags:	This is used to customize operation of overlay. See MDP flags
+  *		for more information.
+- * @pipe_type:  Used to specify the type of overlay pipe.
+  * @user_data:	DEPRECATED* Used to store user application specific information.
+  * @bg_color:	Solid color used to fill the overlay surface when no source
+  *		buffer is provided.
+@@ -625,7 +607,6 @@ struct mdp_overlay {
+ 	uint32_t blend_op;
+ 	uint32_t transp_mask;
+ 	uint32_t flags;
+-	uint32_t pipe_type;
+ 	uint32_t id;
+ 	uint32_t user_data[6];
+ 	uint32_t bg_color;
+-- 
+2.9.3
+
+
+From 9f11205863088510311f0ed60024d0546c8cd763 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caiooliveirafarias0@gmail.com>
+Date: Tue, 19 Jul 2016 21:10:41 -0300
+Subject: [PATCH 2/4] falconss: Bring back modules
+
+Signed-off-by: Caio Oliveira <caiooliveirafarias0@gmail.com>
+---
+ arch/arm/configs/cyanogenmod_falconss_defconfig | 21 +++++++++++++++++++--
+ 1 file changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/arch/arm/configs/cyanogenmod_falconss_defconfig b/arch/arm/configs/cyanogenmod_falconss_defconfig
+index 20915a7..16fa01f 100644
+--- a/arch/arm/configs/cyanogenmod_falconss_defconfig
++++ b/arch/arm/configs/cyanogenmod_falconss_defconfig
+@@ -164,7 +164,9 @@ CONFIG_PROFILING=y
+ CONFIG_TRACEPOINTS=y
+ CONFIG_OPROFILE=y
+ CONFIG_HAVE_OPROFILE=y
++CONFIG_KPROBES=y
+ # CONFIG_JUMP_LABEL is not set
++CONFIG_KRETPROBES=y
+ CONFIG_HAVE_KPROBES=y
+ CONFIG_HAVE_KRETPROBES=y
+ CONFIG_HAVE_DMA_ATTRS=y
+@@ -184,7 +186,12 @@ CONFIG_HAVE_ARCH_JUMP_LABEL=y
+ CONFIG_HAVE_GENERIC_DMA_COHERENT=y
+ CONFIG_RT_MUTEXES=y
+ CONFIG_BASE_SMALL=0
+-# CONFIG_MODULES is not set
++CONFIG_MODULES=y
++# CONFIG_MODULE_FORCE_LOAD is not set
++CONFIG_MODULE_UNLOAD=y
++CONFIG_MODULE_FORCE_UNLOAD=y
++CONFIG_MODVERSIONS=y
++# CONFIG_MODULE_SRCVERSION_ALL is not set
+ CONFIG_STOP_MACHINE=y
+ CONFIG_BLOCK=y
+ CONFIG_LBDAF=y
+@@ -1088,11 +1095,13 @@ CONFIG_XPS=y
+ # CONFIG_NETPRIO_CGROUP is not set
+ CONFIG_BQL=y
+ CONFIG_HAVE_BPF_JIT=y
++# CONFIG_BPF_JIT is not set
+ 
+ #
+ # Network testing
+ #
+ # CONFIG_NET_PKTGEN is not set
++# CONFIG_NET_TCPPROBE is not set
+ # CONFIG_NET_DROP_MONITOR is not set
+ # CONFIG_HAMRADIO is not set
+ # CONFIG_CAN is not set
+@@ -1656,6 +1665,7 @@ CONFIG_I2C_QUP=y
+ #
+ # Other I2C/SMBus bus drivers
+ #
++# CONFIG_I2C_STUB is not set
+ # CONFIG_I2C_DEBUG_CORE is not set
+ # CONFIG_I2C_DEBUG_ALGO is not set
+ # CONFIG_I2C_DEBUG_BUS is not set
+@@ -2054,6 +2064,7 @@ CONFIG_MSM_WFD=y
+ # CONFIG_MSM_WFD_DEBUG is not set
+ # CONFIG_DVB_MPQ is not set
+ # CONFIG_MSM_VCAP is not set
++# CONFIG_MEDIA_ATTACH is not set
+ CONFIG_MEDIA_TUNER=y
+ CONFIG_MEDIA_TUNER_CUSTOMISE=y
+ 
+@@ -2827,6 +2838,7 @@ CONFIG_UIO_MSM_SHAREDMEM=y
+ #
+ CONFIG_STAGING=y
+ # CONFIG_ECHO is not set
++# CONFIG_RTLLIB is not set
+ # CONFIG_IIO is not set
+ CONFIG_ZRAM=y
+ # CONFIG_ZRAM_DEBUG is not set
+@@ -2865,7 +2877,7 @@ CONFIG_ANDROID_LOW_MEMORY_KILLER_AUTODETECT_OOM_ADJ_VALUES=y
+ # Qualcomm Atheros Prima WLAN module
+ #
+ # CONFIG_PRIMA_WLAN is not set
+-CONFIG_PRONTO_WLAN=y
++CONFIG_PRONTO_WLAN=m
+ # CONFIG_PRIMA_WLAN_BTAMP is not set
+ CONFIG_PRIMA_WLAN_LFR=y
+ # CONFIG_PRIMA_WLAN_OKC is not set
+@@ -3127,6 +3139,7 @@ CONFIG_RCU_CPU_STALL_TIMEOUT=60
+ CONFIG_RCU_CPU_STALL_VERBOSE=y
+ # CONFIG_RCU_CPU_STALL_INFO is not set
+ # CONFIG_RCU_TRACE is not set
++# CONFIG_KPROBES_SANITY_TEST is not set
+ # CONFIG_BACKTRACE_SELF_TEST is not set
+ # CONFIG_DEBUG_BLOCK_EXT_DEVT is not set
+ # CONFIG_DEBUG_FORCE_WEAK_PER_CPU is not set
+@@ -3159,6 +3172,7 @@ CONFIG_BRANCH_PROFILE_NONE=y
+ # CONFIG_PROFILE_ALL_BRANCHES is not set
+ # CONFIG_STACK_TRACER is not set
+ # CONFIG_BLK_DEV_IO_TRACE is not set
++CONFIG_KPROBE_EVENT=y
+ # CONFIG_CPU_FREQ_SWITCH_PROFILER is not set
+ # CONFIG_RING_BUFFER_BENCHMARK is not set
+ # CONFIG_DYNAMIC_DEBUG is not set
+@@ -3173,7 +3187,9 @@ CONFIG_HAVE_ARCH_KGDB=y
+ CONFIG_ARM_UNWIND=y
+ CONFIG_DEBUG_USER=y
+ # CONFIG_DEBUG_LL is not set
++# CONFIG_ARM_KPROBES_TEST is not set
+ # CONFIG_PID_IN_CONTEXTIDR is not set
++CONFIG_DEBUG_SET_MODULE_RONX=y
+ 
+ #
+ # Security options
+@@ -3229,6 +3245,7 @@ CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=y
+ CONFIG_CRYPTO_WORKQUEUE=y
+ # CONFIG_CRYPTO_CRYPTD is not set
+ CONFIG_CRYPTO_AUTHENC=y
++# CONFIG_CRYPTO_TEST is not set
+ 
+ #
+ # Authenticated Encryption with Associated Data
+-- 
+2.9.3
+
+
+From 63f786b0fd6ed22a680d1d7e96169a86d45de496 Mon Sep 17 00:00:00 2001
+From: mpersano <mpr@fzort.org>
+Date: Sat, 21 Nov 2015 18:41:52 -0200
+Subject: [PATCH 3/4] Prima WLAN: Make a dummy parameter
+
+About qcom_reg parameter: without this parameter, you'll notice that even though the module can be successfully loaded with insmod, it won't get loaded during startup.
+This happens because whoever tries to install the module (libhardware_legacy.so) is passing the parameter qcom_reg = 0, which doesn't exist in the open-source version.
+---
+ drivers/staging/prima/CORE/HDD/src/wlan_hdd_main.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/drivers/staging/prima/CORE/HDD/src/wlan_hdd_main.c b/drivers/staging/prima/CORE/HDD/src/wlan_hdd_main.c
+index ef64b93..dd09b53 100644
+--- a/drivers/staging/prima/CORE/HDD/src/wlan_hdd_main.c
++++ b/drivers/staging/prima/CORE/HDD/src/wlan_hdd_main.c
+@@ -6995,3 +6995,6 @@ module_param_call(con_mode, con_mode_handler, param_get_int, &con_mode,
+ 
+ module_param_call(fwpath, fwpath_changed_handler, param_get_string, &fwpath,
+                     S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
++
++static int qcom_reg = 0;
++module_param(qcom_reg, int, 0644);
+-- 
+2.9.3
+
+
+From c57973bcd6163c632c3b11f24c773bb89db17334 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <caiooliveirafarias0@gmail.com>
+Date: Thu, 18 Aug 2016 11:40:08 -0300
+Subject: [PATCH 4/4] build.sh: Update for KK-Stock
+
+Signed-off-by: Caio Oliveira <caiooliveirafarias0@gmail.com>
+---
+ build.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/build.sh b/build.sh
+index 9dfa55e..7b80270 100644
+--- a/build.sh
++++ b/build.sh
+@@ -245,7 +245,7 @@ then
+ 	# Main Variables
+ 	custom_kernel=SSProj-CAFKernel
+ 	builder=TeamVee-SS
+-	custom_kernel_branch=KK
++	custom_kernel_branch=KK-Stock
+ 	ARCH=arm
+ 
+ 	while true
+-- 
+2.9.3
+
