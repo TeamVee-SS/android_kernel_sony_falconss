@@ -223,6 +223,12 @@ else
 fi
 }
 
+# Update DT Image to Live Ramdisk
+update_dt() {
+	chmod a+x ${original_dir}/zip-creator/base/dtbToolCM
+	${original_dir}/zip-creator/base/dtbToolCM -2 -s 2048 -p ${original_dir}/scripts/dtc/ ${original_dir}/arch/${ARCH}/boot/ -o ${original_dir}/zip-creator/base/dt.img
+}
+
 # Wrong choice
 wrong_choice() {
 echo "${x} | This option is not available! | Something is wrong! | Check ${color_green}Choice Menu${color_stock}!"; sleep 2
@@ -326,6 +332,7 @@ then
 			7) zip_packer;;
 			8) zip_copy_adb;;
 			q|e) echo "${x} | Ok, Bye!"; break;;
+			u) update_dt;;
 			*) wrong_choice;;
 		esac
 	done
