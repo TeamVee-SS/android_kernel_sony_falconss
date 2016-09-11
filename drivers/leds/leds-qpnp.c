@@ -736,8 +736,6 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 				led->mpp_cfg->current_setting = 5;
 
 			val = (led->mpp_cfg->current_setting / LED_MPP_CURRENT_MIN) - 1;
-			printk(KERN_INFO"tracy: green led brightness: %d, green led current: %d\n",
-				led->cdev.brightness, led->mpp_cfg->current_setting);
 
 			rc = qpnp_led_masked_write(led,
 					LED_MPP_SINK_CTRL(led->base),
