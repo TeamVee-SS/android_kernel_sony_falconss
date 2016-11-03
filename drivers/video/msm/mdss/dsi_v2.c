@@ -470,23 +470,19 @@ static void dsi_esd_wq_workqueue_handler(struct work_struct *work)
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int rc = 0;
 
-	ctrl_pdata = container_of(panel_info_local, struct mdss_dsi_ctrl_pdata,
-				panel_data);
+	ctrl_pdata = container_of(panel_info_local, struct mdss_dsi_ctrl_pdata, panel_data);
 
 	dsi_set_tx_power_mode(0);
-		rc = dsi_intf.tx(ctrl_pdata,
-					ctrl_pdata->esd_cmds.cmds,
-					ctrl_pdata->esd_cmds.cmd_cnt);
+	rc = dsi_intf.tx(ctrl_pdata, ctrl_pdata->esd_cmds.cmds, ctrl_pdata->esd_cmds.cmd_cnt);
 	dsi_set_tx_power_mode(1);
 
 	if (rc)
-		pr_err("dsi_esd_wq_workqueue_handler failed %d\n", rc);
-		if (cancel_quene_result != 0) {
-			queue_delayed_work(dsi_esd_wq,
-					   &dsi_esd_wq_worker,
-					   esd_timer_duration);
-		} else
-			printk(KERN_INFO "tracy:quene flush has active!");
+		pr_err("%s failed %d\n", __func__, rc);
+
+	if (cancel_quene_result != 0)
+		queue_delayed_work(dsi_esd_wq, &dsi_esd_wq_worker, esd_timer_duration);
+	else
+		pr_info("%s: tracy: quene flush has active!\n", __func__);
 }
 
 int dsi_panel_device_register_v2(struct platform_device *dev,

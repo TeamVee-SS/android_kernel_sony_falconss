@@ -52,11 +52,14 @@
 #include <mach/iommu.h>
 #include <mach/iommu_domains.h>
 #include <mach/msm_memtypes.h>
-#include <mach/msm_smem.h>
 
 #include "mdss_fb.h"
 
+#ifdef CONFIG_LEDS_LM3533
+#include <mach/msm_smem.h>
+
 #include <linux/leds-lm3533.h>
+#endif
 
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
@@ -67,7 +70,10 @@
 #define MAX_FBI_LIST 32
 static struct fb_info *fbi_list[MAX_FBI_LIST];
 static int fbi_list_index;
+
+#ifdef CONFIG_LEDS_LM3533
 static int LCD_init = 0;
+#endif
 
 static u32 mdss_fb_pseudo_palette[16] = {
 	0x00000000, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -308,20 +314,6 @@ static ssize_t mdss_fb_get_split(struct device *dev,
 	return ret;
 }
 
-static ssize_t mdss_fb_lcm_module_id(struct device *dev,
-				  struct device_attribute *attr, char *buf)
-{
-	ssize_t ret = 0;
-
-	printk(KERN_INFO"tracy: LCM_ID_mdss:%d \n",gpio_get_value(78));
-	if (gpio_get_value(78))
-		ret = snprintf(buf, PAGE_SIZE, "TRULY\n");
-	else
-		ret = snprintf(buf, PAGE_SIZE, "TCL\n");
-
-	return ret;
-}
-
 static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -398,7 +390,6 @@ static DEVICE_ATTR(show_blank_event, S_IRUGO, mdss_mdp_show_blank_event, NULL);
 static DEVICE_ATTR(idle_time, S_IRUGO | S_IWUSR | S_IWGRP,
 	mdss_fb_get_idle_time, mdss_fb_set_idle_time);
 static DEVICE_ATTR(idle_notify, S_IRUGO, mdss_fb_get_idle_notify, NULL);
-static DEVICE_ATTR(lcm_module_id, S_IRUGO, mdss_fb_lcm_module_id, NULL);
 
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
@@ -406,7 +397,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_show_blank_event.attr,
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
-	&dev_attr_lcm_module_id.attr,
 	NULL,
 };
 
@@ -860,25 +850,30 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)info->par;
 	int ret = 0;
 
-	unsigned smem_size;
 	if (!op_enable)
 		return -EPERM;
 
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
+#ifdef CONFIG_LEDS_LM3533
 	if (LCD_init == 0) {
+		unsigned smem_size;
 		boot_reason = *(unsigned int *)
-		(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
+			(smem_get_entry(SMEM_POWER_ON_STATUS_INFO, &smem_size));
+		pr_info("Boot Reason = 0x%02x\n", boot_reason);
 	}
+#endif
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		if (!mfd->panel_power_on && mfd->mdp.on_fnc) {
 			ret = mfd->mdp.on_fnc(mfd);
-			if ((boot_reason == 0x10) && (LCD_init == 0)) {
+#ifdef CONFIG_LEDS_LM3533
+			if (LCD_init == 0) {
 				lm3533_backlight_control(0);
 				LCD_init = 1;
 			}
+#endif
 			if (ret == 0) {
 				mfd->panel_power_on = true;
 				mfd->panel_info->panel_dead = false;
@@ -903,20 +898,15 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		if (mfd->panel_power_on && mfd->mdp.off_fnc) {
 			int curr_pwr_state;
 
-			pr_emerg("tracy: poweroff start %s\n", __func__);
 			mutex_lock(&mfd->update.lock);
 			mfd->update.type = NOTIFY_TYPE_SUSPEND;
 			mfd->update.is_suspend = 1;
-			pr_emerg("tracy: poweroff 1 %s\n", __func__);
 			mutex_unlock(&mfd->update.lock);
-			pr_emerg("tracy: poweroff 2 %s\n", __func__);
 			complete(&mfd->update.comp);
 			del_timer(&mfd->no_update.timer);
 			mfd->no_update.value = NOTIFY_TYPE_SUSPEND;
-			pr_emerg("tracy: poweroff 3 %s\n", __func__);
 			complete(&mfd->no_update.comp);
 
-			pr_emerg("tracy: poweroff 4 %s\n", __func__);
 			mfd->op_enable = false;
 			curr_pwr_state = mfd->panel_power_on;
 			mfd->panel_power_on = false;
@@ -1500,9 +1490,15 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 	}
 
 	if (!mfd->ref_cnt) {
-		if (mfd->disp_thread)
+		if (mfd->disp_thread) {
+#ifndef CONFIG_LEDS_LM3533
+			kthread_stop(mfd->disp_thread);
+#endif
 			mfd->disp_thread = NULL;
+		}
+#ifdef CONFIG_LEDS_LM3533
 		lm3533_backlight_control(0);
+#endif
 
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
 			mfd->op_enable);
@@ -1843,10 +1839,12 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 			pr_err("pan display failed %x on fb%d\n", ret,
 					mfd->index);
 	}
-	if (LCD_init == false) {
+#ifdef CONFIG_LEDS_LM3533
+	if (LCD_init == 0) {
 		lm3533_backlight_control(0);
-		LCD_init = true;
+		LCD_init = 1;
 	}
+#endif
 	if (!ret)
 		mdss_fb_update_backlight(mfd);
 

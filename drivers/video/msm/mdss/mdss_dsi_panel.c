@@ -343,7 +343,12 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	switch (ctrl_pdata->bklt_ctrl) {
 	case BL_WLED:
+#ifndef CONFIG_LEDS_LM3533
+		led_trigger_event(bl_led_trigger, bl_level);
+#else
 		lm3533_backlight_control(bl_level);
+#endif
+
 		break;
 	case BL_PWM:
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
