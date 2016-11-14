@@ -17,7 +17,7 @@
 #define LM3533_LED2 2
 #define LM3533_LEDS_MAX 3
 ////20130722 tracy add for notification led--
-#define LM3533_LED_STATUS_MASK	0x03
+#define LM3533_LED_STATUS_MASK 0x03
 
 #define LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION1 0x10
 #define LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION2 0x11
@@ -114,21 +114,20 @@
 #define LM3533_SHORT_FAULT_READ_BACK 0xB1
 #define LM3533_FAULT_ENABLE 0xB2
 
-
-//20130717 tracy modify unused led code++
+// 20130717 tracy modify unused led code++
 struct lm3533_led {
-	const char    *name;
+	const char *name;
 };
-//20130717 tracy modify unused led code--
+// 20130717 tracy modify unused led code--
 enum lm3533_rgb_brightness {
-	SNS_NO		= 0,				
-	SNS_B		=  1,			
-	SNS_G		=  10,			
-	SNS_GB		=  11,			
-	SNS_R		=  100,				
-	SNS_RB		=  101,			
-	SNS_RG		=  110,			
-	SNS_RGB		=  111,					
+	SNS_NO = 0,
+	SNS_B = 1,
+	SNS_G = 10,
+	SNS_GB = 11,
+	SNS_R = 100,
+	SNS_RB = 101,
+	SNS_RG = 110,
+	SNS_RGB = 111,
 };
 
 struct lm3533_platform_data {
