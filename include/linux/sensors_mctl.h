@@ -16,10 +16,10 @@
 #ifndef _SENSORS_MCTL_H_
 #define _SENSORS_MCTL_H_
 
-#include <linux/types.h>
 #include <linux/ioctl.h>
+#include <linux/types.h>
 
-enum Sensor_Calibrate_Job{
+enum Sensor_Calibrate_Job {
 	/* Add events for processing */
 	ACCELEROMETER_AXISOFFSET_SET = 0,
 	ACCELEROMETER_AXISOFFSET_INIT_SET,
@@ -32,7 +32,7 @@ enum Sensor_Calibrate_Job{
 
 #define SENSOR_CALIBRATE_JOB_SIZE MAX_CALIBRATE_JOB_SIZE
 
-typedef struct ProximityInfor{
+typedef struct ProximityInfor {
 	/* Current proximity ADC value on proximity sensor */
 	int Value;
 	/* Current state on proximity sensor */
@@ -41,9 +41,9 @@ typedef struct ProximityInfor{
 	uint16_t Threshold_L;
 	/* Current threshold_h on proximity sensor */
 	uint16_t Threshold_H;
-}ProximityInfor;
+} ProximityInfor;
 
-typedef struct LightInfor{
+typedef struct LightInfor {
 	/* Current LUX value on light sensor */
 	int Value;
 	/* Current Channel 0 value on light sensor */
@@ -52,18 +52,18 @@ typedef struct LightInfor{
 	uint16_t Channel_1;
 	/* Current Const value on light sensor, 10000x magnification */
 	int Const;
-}LightInfor;
+} LightInfor;
 
-typedef struct AccelerometerAxisOffset{
+typedef struct AccelerometerAxisOffset {
 	short X;
 	short Y;
 	short Z;
-}AccelerometerAxisOffset;
+} AccelerometerAxisOffset;
 
-typedef struct Sensor_Calibrate_Infor{
+typedef struct Sensor_Calibrate_Infor {
 	/* Identification */
 	enum Sensor_Calibrate_Job job;
-	union{
+	union {
 		/* The Accelerometer axis offset for calibrating */
 		AccelerometerAxisOffset a_axisoffset;
 		/* The Proximity information structure for setting/getting */
@@ -72,16 +72,16 @@ typedef struct Sensor_Calibrate_Infor{
 		LightInfor l_infor;
 	};
 	/* Reserved */
-	char* sensor_String;
-}Sensor_Calibrate_Infor;
+	char *sensor_String;
+} Sensor_Calibrate_Infor;
 
-struct device_infor{
-	char			name[32];
-	char			vendor[32];
-	unsigned short	maxRange;
-	unsigned short	resolution;
-	unsigned short	power;
-	int32_t			minDelay;
+struct device_infor {
+	char name[32];
+	char vendor[32];
+	unsigned short maxRange;
+	unsigned short resolution;
+	unsigned short power;
+	int32_t minDelay;
 };
 
 #endif
