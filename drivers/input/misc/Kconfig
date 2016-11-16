@@ -626,6 +626,13 @@ config INPUT_XEN_KBDDEV_FRONTEND
 	  To compile this driver as a module, choose M here: the
 	  module will be called xen-kbdfront.
 
+config INPUT_EPL6881
+       tristate "EPL6881 SENSOR"
+       default n
+       help
+         This option enables device driver support for the proximity / light sensor
+         Elan Microelectronics Corp. EPL6881 chip.
+
 config PMIC8058_OTHC
         tristate "Qualcomm PMIC8058 OTHC support"
         default n
