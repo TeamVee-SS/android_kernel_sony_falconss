@@ -25,11 +25,13 @@
 #include <linux/of_irq.h>
 #include <linux/memory.h>
 #include <linux/msm_tsens.h>
+#include <linux/persistent_ram.h>
 #include <asm/mach/map.h>
 #include <asm/arch_timer.h>
 #include <asm/hardware/gic.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/time.h>
+#include <asm/setup.h>
 #include <mach/board.h>
 #include <mach/gpiomux.h>
 #include <mach/msm_iomap.h>
@@ -47,6 +49,7 @@
 #include <mach/rpm-regulator-smd.h>
 #include <mach/msm_smem.h>
 #include <linux/msm_thermal.h>
+#include "board-8610-falconss-console.h"
 #include "board-dt.h"
 #include "clock.h"
 #include "platsmp.h"
@@ -87,6 +90,43 @@ static struct reserve_info msm8610_reserve_info __initdata = {
 	.paddr_to_memtype = msm8610_paddr_to_memtype,
 };
 
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+#define MSM_PERSISTENT_RAM_SIZE (SZ_1M)
+#define MSM_RAM_CONSOLE_SIZE (128 * SZ_1K)
+
+static struct persistent_ram_descriptor pr_desc = {
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	.name = "ram_console",
+	.size = MSM_RAM_CONSOLE_SIZE
+#endif
+};
+
+static struct persistent_ram persist_ram = {
+	.size = MSM_PERSISTENT_RAM_SIZE,
+	.num_descs = 1,
+	.descs = &pr_desc
+};
+
+static void reserve_persistent_ram(void)
+{
+	struct persistent_ram *pram = &persist_ram;
+	struct membank* bank = &meminfo.bank[0];
+
+	pram->start = bank->start + bank->size - MSM_PERSISTENT_RAM_SIZE;
+	persistent_ram_early_init(pram);
+}
+#endif
+
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+static struct platform_device ram_console_device = {
+	.name           = "ram_console",
+	.id             = -1,
+	.dev = {
+		.platform_data = &ram_console_pdata,
+	}
+};
+#endif
+
 static void __init msm8610_early_memory(void)
 {
 	reserve_info = &msm8610_reserve_info;
@@ -95,9 +135,19 @@ static void __init msm8610_early_memory(void)
 
 static void __init msm8610_reserve(void)
 {
+#ifdef CONFIG_ANDROID_PERSISTENT_RAM
+	reserve_persistent_ram();
+#endif
 	reserve_info = &msm8610_reserve_info;
 	of_scan_flat_dt(dt_scan_for_memory_reserve, msm8610_reserve_table);
 	msm_reserve();
+}
+
+void __init msm8610_add_devices(void)
+{
+#ifdef CONFIG_ANDROID_RAM_CONSOLE
+	platform_device_register(&ram_console_device);
+#endif
 }
 
 void __init msm8610_add_drivers(void)
@@ -128,6 +178,7 @@ void __init msm8610_init(void)
 
 	msm8610_init_gpiomux();
 	board_dt_populate(adata);
+	msm8610_add_devices();
 	msm8610_add_drivers();
 }
 
