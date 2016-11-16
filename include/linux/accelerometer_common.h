@@ -16,7 +16,6 @@
 #ifndef _ACCELEROMETER_COMMOM_H_
 #define _ACCELEROMETER_COMMOM_H_
 
-#include <linux/postoffice.h>
 #include <linux/sensor_mgr.h>
 #include <linux/sensors_mctl.h>
 #include <linux/types.h>
@@ -66,28 +65,5 @@ static u8 ignoreCount = 0;
 static AccelerometerData rawData;
 static AccelerometerData averageData;
 static AccelerometerData queueData[FILTER_SIZE];
-
-static bool accelerometer_resetAxisOffset(s16 x, s16 y, s16 z)
-{
-	AccelerometerAxisOffset offset = {
-	    .X = x, .Y = y, .Z = z,
-	};
-	Package *package = kzalloc(sizeof(Package), GFP_KERNEL);
-	package->category = WGSensorOffset;
-	memcpy(package->content, &offset, sizeof(AccelerometerAxisOffset));
-	postoffice_sendPackage(package);
-	kfree(package);
-
-	return true;
-}
-
-static bool accelerometer_readAxisOffset(const uint32_t msleep)
-{
-	Package *package = kzalloc(sizeof(Package), GFP_KERNEL);
-	package->category = RGSensorOffset;
-	postoffice_sendPackageDelayed(package, msleep);
-	kfree(package);
-	return true;
-}
 
 #endif
