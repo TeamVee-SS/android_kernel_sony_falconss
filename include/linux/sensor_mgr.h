@@ -10,6 +10,8 @@
 #ifndef __LINUX_SENSOR_H_INCLUDED
 #define __LINUX_SENSOR_H_INCLUDED
 
+#include <linux/mutex.h>
+
 #define __BIN_ATTR(name_, mode_, size_, private_, read_, write_)               \
 	{                                                                      \
 		.attr = {.name = __stringify(name_), .mode = mode_},           \
