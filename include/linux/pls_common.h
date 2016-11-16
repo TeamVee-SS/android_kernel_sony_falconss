@@ -16,7 +16,6 @@
 #ifndef _PLSensor_COMMOM_H_
 #define _PLSensor_COMMOM_H_
 
-#include <linux/postoffice.h>
 #include <linux/sensor_mgr.h>
 #include <linux/sensors_mctl.h>
 #include <linux/types.h>
@@ -123,24 +122,6 @@ static int proximity_readThreshold(const int level)
 	    (result >= level) ? result : prox->sdata.Threshold_H;
 	mutex_unlock(&data->mutex);
 	return result;
-}
-
-static bool light_resetConst(const int Const)
-{
-	Package *package = kzalloc(sizeof(Package), GFP_KERNEL);
-	package->category = WLSensorConst;
-	memcpy(package->content, &Const, sizeof(int));
-	postoffice_sendPackage(package);
-	kfree(package);
-	return true;
-}
-
-static void light_readConst(const uint32_t msleep)
-{
-	Package *package = kzalloc(sizeof(Package), GFP_KERNEL);
-	package->category = RLSensorConst;
-	postoffice_sendPackageDelayed(package, msleep);
-	kfree(package);
 }
 
 #endif
