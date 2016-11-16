@@ -73,6 +73,13 @@ config INPUT_BMA150
 	  To compile this driver as a module, choose M here: the
 	  module will be called bma150.
 
+config INPUT_BMA250E
+       tristate "BMA250E SENSOR"
+       default n
+       help
+         This option enables device driver support for the acclerometer sensor
+         on BOACH BMA250E chip.
+
 config INPUT_HBTP_INPUT
 	tristate "HBTP input driver support"
 	help
