@@ -16,20 +16,14 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-//ALERT:please relocate gps_elna.h under .\kernel\include\linux
+// ALERT:please relocate gps_elna.h under .\kernel\include\linux
 
-
-#define GPS_ELNA_DEVICE_NAME   "gps_elna"
-#define GPS_ELNA_MAGIC         0xA1
+#define GPS_ELNA_DEVICE_NAME "gps_elna"
+#define GPS_ELNA_MAGIC 0xA1
 
 /*
  * GPS eLNA power control via ioctl
  * GPS_ELNA_SET_PWR(0): power off
  * GPS_ELNA_SET_PWR(1): power on
  */
-#define GPS_ELNA_SET_PWR	_IOW(GPS_ELNA_MAGIC, 0x01, unsigned int)
-
-
-
-
-
+#define GPS_ELNA_SET_PWR _IOW(GPS_ELNA_MAGIC, 0x01, unsigned int)
