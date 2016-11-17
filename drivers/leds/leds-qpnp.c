@@ -752,10 +752,22 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 		if (led->mpp_cfg->pwm_mode != MANUAL_MODE)
 			pwm_enable(led->mpp_cfg->pwm_cfg->pwm_dev);
 		else {
+#ifdef CONFIG_MACH_SONY_FALCONSS
+			if (led->mpp_cfg->current_setting < LED_MPP_CURRENT_MIN)
+				led->mpp_cfg->current_setting = LED_MPP_CURRENT_MIN;
+
+			if (led->cdev.brightness == 200)
+				led->mpp_cfg->current_setting = 15;
+			else
+				led->mpp_cfg->current_setting = 5;
+
+			val = (led->mpp_cfg->current_setting / LED_MPP_CURRENT_MIN) - 1;
+#else
 			if (led->cdev.brightness < LED_MPP_CURRENT_MIN)
 				led->cdev.brightness = LED_MPP_CURRENT_MIN;
 
 			val = (led->cdev.brightness / LED_MPP_CURRENT_MIN) - 1;
+#endif
 
 			rc = qpnp_led_masked_write(led,
 					LED_MPP_SINK_CTRL(led->base),
@@ -1602,10 +1614,14 @@ static int __devinit qpnp_led_set_max_brightness(struct qpnp_led_data *led)
 		led->cdev.max_brightness = RGB_MAX_LEVEL;
 		break;
 	case QPNP_ID_LED_MPP:
+#ifdef CONFIG_MACH_SONY_FALCONSS
+		led->cdev.max_brightness = MPP_MAX_LEVEL;
+#else
 		if (led->mpp_cfg->pwm_mode == MANUAL_MODE)
 			led->cdev.max_brightness = led->max_current;
 		else
 			led->cdev.max_brightness = MPP_MAX_LEVEL;
+#endif
 		break;
 	case QPNP_ID_KPDBL:
 		led->cdev.max_brightness = KPDBL_MAX_LEVEL;
