@@ -3687,6 +3687,10 @@ static int set_battery_data(struct qpnp_bms_chip *chip)
 		batt_data = &QRD_4v35_2000mAh_data;
 	} else if (chip->batt_type == BATT_QRD_4V2_1300MAH) {
 		batt_data = &qrd_4v2_1300mah_data;
+#ifdef CONFIG_MACH_SONY_FALCONSS
+	} else if (chip->batt_type == BATT_QRD_ARIMA_1700MAH) {
+		batt_data = &Arima_Falcon_1700mAh_data;
+#endif
 	} else {
 		battery_id = read_battery_id(chip);
 		if (battery_id < 0) {
