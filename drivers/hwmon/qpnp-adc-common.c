@@ -130,6 +130,56 @@ static const struct qpnp_vadc_map_pt adcmap_btm_threshold[] = {
 	{790,	203}
 };
 
+#ifdef CONFIG_MACH_SONY_FALCONSS
+static const struct qpnp_vadc_map_pt adcmap_btm_threshold1[] = {
+	{-200,	1045},
+	{-150,	1029},
+	{-100,	1009},
+	{-50,	989},
+	{0,	973},
+	{50,	947},
+	{100,	920},
+	{150,	894},
+	{200,	869},
+	{250,	845},
+	{300,	824},
+	{350,	805},
+	{400,	788},
+	{450,	773},
+	{500,	761},
+	{550,	750},
+	{600,	741},
+	{650,	733},
+	{700,	727},
+};
+
+static const struct qpnp_vadc_map_pt adcmap_btm_threshold2[] = {
+	{-200,	1401},
+	{-150,	1377},
+	{-100,	1350},
+	{-50,	1327},
+	{0,	1307},
+	{50,	1294},
+	{100,	1279},
+	{150,	1262},
+	{200,	1244},
+	{250,	1226},
+	{300,	1207},
+	{350,	1190},
+	{400,	1174},
+	{450,	1159},
+	{500,	1145},
+	{550,	1134},
+	{600,	1124},
+	{650,	1115},
+	{700,	1107}
+};
+
+static const struct qpnp_vadc_map_pt adcmap_btm_threshold3[] = {
+	{2550,	1800 }
+};
+#endif
+
 static const struct qpnp_vadc_map_pt adcmap_qrd_btm_threshold[] = {
 	{-200,	1540},
 	{-180,	1517},
@@ -621,11 +671,35 @@ int32_t qpnp_adc_scale_batt_therm(struct qpnp_vadc_chip *chip,
 	bat_voltage = qpnp_adc_scale_ratiometric_calib(adc_code,
 			adc_properties, chan_properties);
 
+#ifdef CONFIG_MACH_SONY_FALCONSS
+	if (bat_voltage > 727 && bat_voltage < 1045 ) {
+		return qpnp_adc_map_temp_voltage(
+			adcmap_btm_threshold1,
+			ARRAY_SIZE(adcmap_btm_threshold1),
+			bat_voltage,
+			&adc_chan_result->physical);
+
+	} else if (bat_voltage > 1107 && bat_voltage < 1451) {
+		return qpnp_adc_map_temp_voltage(
+			adcmap_btm_threshold2,
+			ARRAY_SIZE(adcmap_btm_threshold2),
+			bat_voltage,
+			&adc_chan_result->physical);
+	} else {
+		return qpnp_adc_map_temp_voltage(
+			adcmap_btm_threshold3,
+			ARRAY_SIZE(adcmap_btm_threshold3),
+			bat_voltage,
+			&adc_chan_result->physical);
+	}
+#else
 	return qpnp_adc_map_temp_voltage(
 			adcmap_btm_threshold,
 			ARRAY_SIZE(adcmap_btm_threshold),
 			bat_voltage,
 			&adc_chan_result->physical);
+#endif
+
 }
 EXPORT_SYMBOL(qpnp_adc_scale_batt_therm);
 
