@@ -86,3 +86,4 @@
 };
 
 /include/ "dsi-panel-truly-wvga-video-falconss.dtsi"
+/include/ "dsi-panel-truly-wvga-cmd.dtsi"

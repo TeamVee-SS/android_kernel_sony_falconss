@@ -192,7 +192,7 @@
 				qcom,vidc-partition-buffer-types = <0xfff>;
 			};
 		};
-};
+	};
 
 	qcom,usbbam@f9a44000 {
 		compatible = "qcom,usb-bam-msm";
