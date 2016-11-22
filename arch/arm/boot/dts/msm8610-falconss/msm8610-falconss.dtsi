@@ -19,7 +19,7 @@
 
 	memory {
 		qsecom_mem: qsecom_region {
-			linux,contiguous-region;
+			linux,reserve-contiguous-region;
 			reg = <0 0x100000>;
 			label = "qsecom_mem";
 		};
@@ -940,8 +940,7 @@
 
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
-		qcom,memory-reservation-type = "EBI1";
-		qcom,memory-reservation-size = <0x100000>; /* 1M EBI1 buffer */
+		qcom,msm-rtb = <0x100000>; /* 1M EBI1 buffer */
 	};
 
 	jtag_fuse: jtagfuse@fc4be024 {
