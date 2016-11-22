@@ -723,7 +723,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		INIT_DELAYED_WORK(&BT_connected, lm3533_led_btconnected_work);
 
 		err = led_classdev_register(&client->dev, &led->ldev);
-		if (!err) {
+		if (err < 0) {
 			dev_err(&client->dev, "%s: couldn't register LED %s\n",
 				__func__, led->ldev.name);
 			goto exit;
@@ -736,7 +736,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 			err = sysfs_create_group(&led->ldev.dev->kobj,
 						 &lm3533_attribute_group);
 		}
-		if (!err) {
+		if (err < 0) {
 			pr_err("%s: create fail\n", __func__);
 		}
 
@@ -744,7 +744,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 
 		led->lm3533_led_brightness = 0;
 
-		if (!err) {
+		if (err < 0) {
 			dev_err(&client->dev, "%s: %s couldn't set STATUS\n",
 				__func__, led->ldev.name);
 			goto exit;
@@ -821,7 +821,7 @@ static int lm3533_probe(struct i2c_client *client,
 	mutex_init(&data->lock);
 
 	err = lm3533_configure(client, data, lm3533_pdata);
-	if (!err) {
+	if (err < 0) {
 		kfree(data);
 	}
 
