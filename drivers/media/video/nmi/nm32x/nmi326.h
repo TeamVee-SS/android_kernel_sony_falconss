@@ -1,14 +1,18 @@
-/*****************************************************************************
- Copyright(c) 2012 NMI Inc. All Rights Reserved
-
- File name : nmi326.h
-
- Description : NM326 host interface
-
- History :
- ----------------------------------------------------------------------
- 2012/11/27 	ssw		initial
-*******************************************************************************/
+/* NM326 host Interface
+ *
+ * Copyright (C) 2012 NMI Inc
+ * Copyright (C) 2016 Caio Oliveira <caiooliveirafarias0@gmail.com>
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ */
 
 #ifndef __NMI_HW_H__
 #define __NMI_HW_H__
@@ -21,19 +25,8 @@ extern "C" {
 #include <linux/ioctl.h>
 #include <linux/poll.h>
 #include <linux/sched.h>
-//#include "cust_gpio_usage.h"
-//#include "cust_eint.h"
 
-#define NM_DEBUG_ON
-
-#ifdef NM_DEBUG_ON
-//#define NM_KMSG(x...) printk(KERN_DEBUG ">ISDBT< " x)
-#define NM_KMSG(x...) printk(x)
-#else
-#define NM_KMSG(x...) /* null */
-#endif
-
-#define ISDBT_DEV_NAME "isdbt" // isdbt
+#define ISDBT_DEV_NAME "isdbt"
 #define ISDBT_DEV_MAJOR 227
 #define ISDBT_DEV_MINOR 0
 
@@ -66,6 +59,10 @@ typedef struct {
 #define IOCTL_ISDBT_INTERRUPT_ENABLE _IO(IOCTL_MAGIC, 6)
 #define IOCTL_ISDBT_INTERRUPT_DISABLE _IO(IOCTL_MAGIC, 7)
 #define IOCTL_ISDBT_INTERRUPT_DONE _IO(IOCTL_MAGIC, 8)
+
+unsigned long nmi326_spi_read_chip_id(void);
+int nmi326_spi_read(u8 *buf, size_t len);
+int nmi326_spi_write(u8 *buf, size_t len);
 
 #ifdef __cplusplus
 }
