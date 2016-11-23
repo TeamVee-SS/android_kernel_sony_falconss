@@ -15,179 +15,79 @@
 		status = "ok";
 	};
 
-	i2c@f9923000{
-		atmel_mxt_ts@4a {
-		compatible = "atmel,mxt-ts";
-		reg = <0x4a>;
-		interrupt-parent = <&msmgpio>;
-		interrupts = <1 0x2002>;
-		vdd_ana-supply = <&pm8110_l19>;
-		vcc_i2c-supply = <&pm8110_l14>;
-		atmel,reset-gpio = <&msmgpio 0 0x00>;
-		atmel,irq-gpio = <&msmgpio 1 0x00>;
-		atmel,panel-coords = <0 0 508 880>;
-		atmel,display-coords = <0 0 480 800>;
-		atmel,i2c-pull-up;
-		atmel,no-force-update;
-		atmel,no-lpm-support;
-		atmel,cfg_1 {
-			atmel,family-id = <0x81>;
-			atmel,variant-id = <0x15>;
-			atmel,version = <0x11>;
-			atmel,build = <0xaa>;
-			atmel,config = [
-				/* Object 6, Instance = 0 */
-				00 00 00 00 00 00
-				/* Object 38, Instance = 0 */
-				1D 05 01 0D 01 0E 00 00
-				/* Object 7, Instance = 0 */
-				20 08 32
-				/* Object 8, Instance = 0 */
-				19 00 14 14 FF 00 FF 00 00 00
-				/* Object 9, Instance = 0 */
-				83 00 00 13 0B 00 20 32 01 03
-				00 32 05 30 05 05 0A 00 70 03
-				FC 01 04 2F F8 DC 00 00 40 00
-				00 0A 00 00 02
-				/* Object 18, Instance = 0 */
-				00 00
-				/* Object 19, Instance = 0 */
-				00 00 00 00 00 00
-				/* Object 25, Instance = 0 */
-				03 00 18 79 A8 61
-				/* Object 58, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				00
-				/* Object 42, Instance = 0 */
-				00 00 00 00 00 00 00 00
-				/* Object 46, Instance = 0 */
-				04 03 08 10 00 00 00 00 00
-				/* Object 47, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				/* Object 48, Instance = 0 */
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00 00 00 00 00 00 00
-				00 00 00 00
-				/* Object 55, Instance = 0 */
-				00 00 00 00
-				];
-			};
-		};
-
-		synaptics@20 {
-			compatible = "synaptics,rmi4";
-			reg = <0x20>;
+	i2c@f9923000 {
+		elan_ktf2k_ts@15 {
+			compatible = "elan,ktf2k_ts";
+			reg = <0x15>;
 			interrupt-parent = <&msmgpio>;
-			interrupts = <1 0x2002>;
-			vdd-supply = <&pm8110_l19>;
+			interrupts = <1 0x2>;
+			vdd_ana-supply = <&pm8110_l19>;
 			vcc_i2c-supply = <&pm8110_l14>;
-			synaptics,reset-gpio = <&msmgpio 0 0x00>;
-			synaptics,irq-gpio = <&msmgpio 1 0x2008>;
-			synaptics,button-map = <139 102 158>;
-			synaptics,i2c-pull-up;
-			synaptics,power-down;
-			synaptics,disable-gpios;
+			elan,reset-gpio = <&msmgpio 0 0x00>;
+			elan,irq-gpio = <&msmgpio 1 0x00>;
+			elan,hw-det-gpio = <&msmgpio 7 0x00>;
+			elan,i2c-pull-up;
 		};
 	};
 
 	i2c@f9925000 {
-		mpu3050@68 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			reg = <0x68>;
-			compatible = "invn,mpu3050";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <84 0x2>;
-			vlogic-supply = <&pm8110_l14>;
-			vdd-supply = <&pm8110_l19>;
-			invn,gpio-int = <&msmgpio 84 0x2>;
-			invn,gpio-en = <&pm8110_gpios 2 0x2>;
-			invn,poll-interval = <200>;
+		bma250e@18 {
+			compatible = "accelerometer,bma250e";
+			reg = <0x18>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-
-		bmp180@77 {
-			reg = <0x77>;
-			compatible = "bosch,bmp18x";
-			vdd-supply = <&pm8110_l19>;
-			vddio-supply = <&pm8110_l14>;
-			bosch,chip-id = <0x55>;
-			bosch,oversample = <3>;
-			bosch,period = <1000>;
+		epl6881@49 {
+			compatible = "proximity,epl6811";
+			reg = <0x49>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-
-		mma8x5x@1d {
-			reg = <0x1d>;
-			compatible = "fsl,mma8x5x";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <81 0x2>;
-			vdd-supply = <&pm8110_l19>;
-			vio-supply = <&pm8110_l14>;
-			fsl,irq-gpio = <&msmgpio 81 0x00>;
-			fsl,sensors-position = <5>;
+		akm8963@0D {
+			compatible = "magnetic,akm8963";
+			reg = <0x0D>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-		capella@60 {
-			compatible = "capella,cm36283";
-			reg = <0x60>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <80 0x2>;
-			vdd-supply = <&pm8110_l19>;
-			vio-supply = <&pm8110_l14>;
-			capella,use-polling;
-			capella,interrupt-gpio = <&msmgpio 80 0x2>;
-			capella,levels = <0x0A 0xA0 0xE1 0x140 0x280 0x500 0xA28 0x16A8 0x1F40
-				0x2800>;
-			capella,ps_close_thd_set = <0xa>;
-			capella,ps_away_thd_set = <0x5>;
-			capella,ls_cmd = <0x04>; /* ALS_IT=80ms, INT_PERS=2*/
-			capella,ps_conf1_val = <0x0006>;
-			capella,ps_conf3_val = <0x3010>;
-		};
-		nfc-nci@0e {
-			compatible = "qcom,nfc-nci";
-			reg = <0x0e>;
-			qcom,irq-gpio = <&msmgpio 77 0x00>;
-			qcom,dis-gpio = <&msmgpio 93 0x00>;
-			qcom,clk-en-gpio = <&msmgpio 78 0x00>;
-			qcom,clk-src = "GPCLK";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <77 0>;
-			qcom,clk-gpio = <&pm8110_gpios 1 0>;
+		ti_lm3533_leds@36 {
+			compatible = "ti,lm3533_leds";
+			reg = <0x36>;
+			ti,hwen-gpio = <&msmgpio 18 0x00>;
 		};
 	};
 
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "atmel_mxt_ts";
-		qcom,disp-maxx = <480>;
-		qcom,disp-maxy = <800>;
-		qcom,panel-maxx = <508>;
-		qcom,panel-maxy = <880>;
-		qcom,key-codes = <158 102 139>;
-		qcom,y-offset = <35>;
+	nmi-isdbt {
+		compatible = "nmi,nmi325_isdbt";
+	};
+
+	spi@f9926000 {
+		nmi325@0 {
+			compatible = "nmi,nmispi";
+			reg = <0>;
+			spi-max-frequency = <5000000>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <0 90 0>;
+		};
 	};
 
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 
-		camera_snapshot {
-			label = "camera_snapshot";
+		vol_down {
+			label = "volume_down";
 			gpios = <&msmgpio 73 0x1>;
 			linux,input-type = <1>;
-			linux,code = <0x2fe>;
+			linux,code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
 
-		camera_focus {
-			label = "camera_focus";
+		mp3 {
+			label = "mp3";
 			gpios = <&msmgpio 74 0x1>;
 			linux,input-type = <1>;
-			linux,code = <0x210>;
+			linux,code = <391>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
@@ -202,21 +102,32 @@
 		};
 	};
 
-    sound {
-        qcom,audio-routing =
-            "RX_BIAS", "MCLK",
-            "INT_LDO_H", "MCLK",
-            "MIC BIAS External", "Handset Mic",
-            "MIC BIAS Internal2", "Headset Mic",
-            "MIC BIAS External", "Secondary Mic",
-            "AMIC1", "MIC BIAS External",
-            "AMIC2", "MIC BIAS Internal2",
-            "AMIC3", "MIC BIAS External";
-    };
+	sound {
+		qcom,audio-routing =
+			"RX_BIAS", "MCLK",
+			"INT_LDO_H", "MCLK",
+			"MIC BIAS External", "Handset Mic",
+			"MIC BIAS External", "Headset Mic",
+			"MIC BIAS External", "Secondary Mic",
+			"AMIC1", "MIC BIAS External",
+			"AMIC2", "MIC BIAS External",
+			"AMIC3", "MIC BIAS External";
+	};
+
+	qcom,mdss_dsi_truly_wvga_video {
+		qcom,cont-splash-enabled;
+	};
+
+	gps_elna {
+		compatible = "arima,gps_elna";
+		elna,enable-gpio = <&msmgpio 63 0x00>;
+		vcc_elna_l16-supply = <&pm8110_l16>;
+		vcc_elna_l19-supply = <&pm8110_l19>;
+	};
 };
 
-&i2c_cdc  {
-	msm8x10_wcd_codec@0d{
+&i2c_cdc {
+	msm8x10_wcd_codec@0d {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x0d>;
 
@@ -258,17 +169,17 @@
 		qcom,cdc-micbias1-ext-cap;
 	};
 
-	msm8x10_wcd_codec@77{
+	msm8x10_wcd_codec@77 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x77>;
 	};
 
-	msm8x10_wcd_codec@66{
+	msm8x10_wcd_codec@66 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x66>;
 	};
 
-	msm8x10_wcd_codec@55{
+	msm8x10_wcd_codec@55 {
 		compatible = "qcom,msm8x10-wcd-i2c";
 		reg = <0x55>;
 	};
@@ -280,10 +191,9 @@
 			status = "okay";
 			qcom,led_mpp_2 {
 				label = "mpp";
-				linux,name = "button-backlight";
-				linux-default-trigger = "hr-trigger";
+				linux,name = "green";
 				qcom,default-state = "off";
-				qcom,max-current = <40>;
+				qcom,max-current = <5>;
 				qcom,id = <6>;
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x60>;
@@ -295,9 +205,8 @@
 			status = "okay";
 			qcom,led_mpp_3 {
 				label = "mpp";
-				linux,name = "wled-backlight";
-				linux,default-trigger = "bkl-trigger";
-				qcom,default-state = "on";
+				linux,name = "red";
+				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,id = <6>;
 				qcom,source-sel = <8>;
@@ -323,6 +232,8 @@
 
 &sdhc_1 {
 	vdd-supply = <&pm8110_l17>;
+	qcom,vdd-always-on;
+	qcom,vdd-lpm-sup;
 	qcom,vdd-voltage-level = <2900000 2900000>;
 	qcom,vdd-current-level = <200 400000>;
 
@@ -375,7 +286,6 @@
 
 &pm8110_chg {
 	status = "ok";
-	qcom,charging-disabled;
 
 	qcom,chgr@1000 {
 		status = "ok";

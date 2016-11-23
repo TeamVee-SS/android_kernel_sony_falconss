@@ -192,7 +192,7 @@
 				qcom,vidc-partition-buffer-types = <0xfff>;
 			};
 		};
-};
+	};
 
 	qcom,usbbam@f9a44000 {
 		compatible = "qcom,usb-bam-msm";
@@ -287,6 +287,8 @@
 		interrupt-names = "core_irq", "bam_irq";
 
 		vdd-supply = <&pm8110_l17>;
+		qcom,vdd-always-on;
+		qcom,vdd-lpm-sup;
 		qcom,vdd-voltage-level = <2900000 2900000>;
 		qcom,vdd-current-level = <9000 400000>;
 
@@ -455,7 +457,8 @@
 
 	qcom,msm-mem-hole {
 		compatible = "qcom,msm-mem-hole";
-		qcom,memblock-remove = <0x08800000 0x5600000>; /* Address and Size of Hole */
+		qcom,memblock-remove = <0x08800000 0x2D00000
+					0x0C500000 0x1900000>; /* Address and Size of Hole */
 	};
 
 	qcom,wdt@f9017000 {
@@ -525,26 +528,26 @@
 		reg = <0xf9923000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 95 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 2 0>;
 		qcom,scl-gpio = <&msmgpio 3 0>;
-                qcom,master-id = <86>;
+		qcom,master-id = <86>;
 	};
 
 	i2c_cdc: i2c@f9927000 { /* BLSP1 QUP5 */
-                cell-index = <5>;
-                compatible = "qcom,i2c-qup";
-                #address-cells = <1>;
-                #size-cells = <0>;
-                reg-names = "qup_phys_addr";
-                reg = <0xf9927000 0x1000>;
-                interrupt-names = "qup_err_intr";
-                interrupts = <0 99 0>;
-                qcom,i2c-bus-freq = <100000>;
-                qcom,i2c-src-freq = <19200000>;
-                qcom,master-id = <86>;
-        };
+		cell-index = <5>;
+		compatible = "qcom,i2c-qup";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0xf9927000 0x1000>;
+		interrupt-names = "qup_err_intr";
+		interrupts = <0 99 0>;
+		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,master-id = <86>;
+	};
 
 	i2c: i2c@f9928000 { /* BLSP1 QUP6 */
 		cell-index = <6>;
@@ -555,13 +558,12 @@
 		reg = <0xf9928000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 100 0>;
-		qcom,i2c-bus-freq = <100000>;
+		qcom,i2c-bus-freq = <400000>;
 		qcom,i2c-src-freq = <19200000>;
 		qcom,sda-gpio = <&msmgpio 16 0>;
 		qcom,scl-gpio = <&msmgpio 17 0>;
-                qcom,master-id = <86>;
+		qcom,master-id = <86>;
 	};
-
 
 	i2c@f9924000 { /* BLSP-1 QUP-3 */
 		cell-index = <2>;
@@ -588,12 +590,12 @@
 		reg = <0xf9925000 0x1000>;
 		interrupt-names = "qup_err_intr";
 		interrupts = <0 97 0>;
-		qcom,i2c-bus-freq = <100000>;
-                qcom,i2c-src-freq = <19200000>;
-                qcom,sda-gpio = <&msmgpio 10 0>;
-                qcom,scl-gpio = <&msmgpio 11 0>;
+		qcom,i2c-bus-freq = <400000>;
+		qcom,i2c-src-freq = <19200000>;
+		qcom,sda-gpio = <&msmgpio 10 0>;
+		qcom,scl-gpio = <&msmgpio 11 0>;
 		qcom,clk-ctl-xfer;
-                qcom,master-id = <86>;
+		qcom,master-id = <86>;
 	};
 
 	spi_4: spi@f9926000 { /* BLSP1 QUP4 */
@@ -613,7 +615,6 @@
 		qcom,gpio-cs0  = <&msmgpio 88 0>;
 
 		qcom,infinite-mode = <0>;
-		qcom,use-bam;
 		qcom,ver-reg-exists;
 		qcom,bam-consumer-pipe-index = <18>;
 		qcom,bam-producer-pipe-index = <19>;
@@ -876,19 +877,18 @@
 		qcom,core-control-mask = <0xe>;
 		qcom,hotplug-temp = <110>;
 		qcom,hotplug-temp-hysteresis = <20>;
-		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5",
-				"tsens_tz_sensor5", "tsens_tz_sensor5";
+		qcom,cpu-sensors = "tsens_tz_sensor5", "tsens_tz_sensor5";
 		qcom,vdd-restriction-temp = <5>;
 		qcom,vdd-restriction-temp-hysteresis = <10>;
 		vdd-dig-supply = <&pm8110_s1_floor_corner>;
 
-		qcom,vdd-dig-rstr{
+		qcom,vdd-dig-rstr {
 			qcom,vdd-rstr-reg = "vdd-dig";
 			qcom,levels = <5 7 7>; /* Nominal, Super Turbo, Super Turbo */
 			qcom,min-level = <1>; /* No Request */
 		};
 
-		qcom,vdd-apps-rstr{
+		qcom,vdd-apps-rstr {
 			qcom,vdd-rstr-reg = "vdd-apps";
 			qcom,levels = <600000 787200 998400>;
 			qcom,freq-req;
@@ -926,17 +926,17 @@
 				<55 512 393600 3936000>;
 	};
 
-        qcom,msm-rng@f9bff000 {
-                compatible = "qcom,msm-rng";
-                reg = <0xf9bff000 0x200>;
-                qcom,msm-rng-iface-clk;
-                qcom,msm-bus,name = "msm-rng-noc";
-                qcom,msm-bus,num-cases = <2>;
-                qcom,msm-bus,num-paths = <1>;
-                qcom,msm-bus,vectors-KBps =
-                                <54 618 0 0>,
-                                <54 618 0 800>;
-        };
+	qcom,msm-rng@f9bff000 {
+		compatible = "qcom,msm-rng";
+		reg = <0xf9bff000 0x200>;
+		qcom,msm-rng-iface-clk;
+		qcom,msm-bus,name = "msm-rng-noc";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+				<54 618 0 0>,
+				<54 618 0 800>;
+	};
 
 	qcom,msm-rtb {
 		compatible = "qcom,msm-rtb";
@@ -985,8 +985,8 @@
 
 	qcom,qcrypto@fd404000 {
 		compatible = "qcom,qcrypto";
-                reg  =  <0xfd400000 0x20000>,
-                        <0xfd404000 0x8000>;
+		reg = <0xfd400000 0x20000>,
+		      <0xfd404000 0x8000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <2>;
@@ -1001,10 +1001,10 @@
 				<55 512 393600 3936000>;
 	};
 
-        qcom,qcedev@fd400000 {
+	qcom,qcedev@fd400000 {
 		compatible = "qcom,qcedev";
-		reg  =  <0xfd400000 0x20000>,
-			<0xfd404000 0x8000>;
+		reg = <0xfd400000 0x20000>,
+		      <0xfd404000 0x8000>;
 		reg-names = "crypto-base","crypto-bam-base";
 		interrupts = <0 207 0>;
 		qcom,bam-pipe-pair = <1>;
