@@ -27,10 +27,7 @@
 #endif
 
 #define S5KCA_SENSOR_NAME "s5k5ca"
-//#define PLATFORM_DRIVER_NAME "msm_camera_s5k5ca"
-//#define s5k5ca_obj s5k5ca_##obj
 DEFINE_MSM_MUTEX(s5k5ca_mut);
-#define upgrate_setting 0
 #define U_EV_1 1
 #define U_EV_2 2
 #define U_EV_3 3
@@ -62,30 +59,9 @@ static struct msm_sensor_power_setting s5k5ca_power_setting[] = {
     },
 };
 static struct msm_camera_i2c_reg_conf s5k5ca_recommend_settings[] = {
-//#include "s5k5ca_yuv_mcnex_MCLK_19.2MHz.h"
 #include "s5k5ca_yuv_mcnex_PVIMask_0x0012.h"
-    //#include "s5k5ca_yuv_mcnex.h"
-};
-#if 0
-static struct msm_camera_i2c_reg_conf s5k5ca_start_settings[] = {
 };
 
-static struct msm_camera_i2c_reg_conf s5k5ca_stop_settings[] = {
-};
-#endif
-/*
-    CAM_WB_MODE_AUTO,
-    CAM_WB_MODE_CUSTOM,
-    CAM_WB_MODE_INCANDESCENT,
-    CAM_WB_MODE_FLUORESCENT,
-    CAM_WB_MODE_WARM_FLUORESCENT,
-    CAM_WB_MODE_DAYLIGHT,
-    CAM_WB_MODE_CLOUDY_DAYLIGHT,
-    CAM_WB_MODE_TWILIGHT,
-    CAM_WB_MODE_SHADE,
-    CAM_WB_MODE_OFF,
-    CAM_WB_MODE_MAX
-*/
 static struct msm_camera_i2c_reg_conf s5k5ca_wb_oem[][10] = {
     {
 	{0x0028, 0x7000}, {0x002a, 0x04D2}, {0x0f12, 0x067F},
@@ -162,34 +138,9 @@ static struct msm_camera_i2c_reg_conf s5k5ca_wb_oem[][10] = {
 };
 
 static uint16_t s5k5ca_wb_size[] = {3, 0, 10, 10, 0, 10, 10, 0, 0, 0};
-#if upgrate_setting
-static uint16_t s5k5ca_best_shot_size[] = {70, 20, 10, 44, 6, 42, 16, 10, 10};
-#else
 static uint16_t s5k5ca_best_shot_size[] = {61, 44, 10, 60, 44, 40, 16, 3, 10};
-#endif
 static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
     {
-	// ----------------Normal-70
-#if upgrate_setting
-	{0x0028, 0x7000}, {0x002a, 0x246E}, {0x0f12, 0x0001}, {0x002A, 0x0842},
-	{0x0F12, 0x7850}, {0x0F12, 0x2878}, {0x002A, 0x0912}, {0x0F12, 0x643C},
-	{0x0F12, 0x2864}, {0x002A, 0x09E2}, {0x0F12, 0x3C2A}, {0x0F12, 0x283C},
-	{0x002A, 0x0AB2}, {0x0F12, 0x2228}, {0x0F12, 0x2822}, {0x002A, 0x0B82},
-	{0x0F12, 0x191C}, {0x0F12, 0x2819}, {0x0028, 0x7000}, {0x002A, 0x020C},
-	{0x0F12, 0x0000}, {0x002A, 0x0210}, {0x0F12, 0x0000}, {0x0F12, 0x0000},
-	{0x002A, 0x0838}, {0x0F12, 0x083C}, {0x002A, 0x0530}, {0x0F12, 0x3A98},
-	{0x002A, 0x0534}, {0x0F12, 0x7EF4}, {0x002A, 0x167C}, {0x0F12, 0x9C40},
-	{0x002A, 0x1680}, {0x0F12, 0xF424}, {0x0F12, 0x0000}, {0x002A, 0x0538},
-	{0x0F12, 0x3A98}, {0x0F12, 0x0000}, {0x0F12, 0x7EF4}, {0x0F12, 0x0000},
-	{0x002A, 0x1684}, {0x0F12, 0x9C40}, {0x0F12, 0x0000}, {0x0F12, 0xF424},
-	{0x0F12, 0x0000}, {0x002A, 0x0540}, {0x0F12, 0x0170}, {0x0F12, 0x0250},
-	{0x002A, 0x168C}, {0x0F12, 0x0380}, {0x0F12, 0x0800}, {0x002A, 0x0544},
-	{0x0F12, 0x0100}, {0x002A, 0x0208}, {0x0F12, 0x0001}, {0x002A, 0x023C},
-	{0x0F12, 0x0000}, {0x002A, 0x0240}, {0x0F12, 0x0001}, {0x002A, 0x0230},
-	{0x0F12, 0x0001}, {0x002A, 0x023E}, {0x0F12, 0x0001}, {0x002A, 0x0220},
-	{0x0F12, 0x0001}, {0x0028, 0xD000}, {0x002A, 0xB0A0}, {0x0F12, 0x0000},
-	{0x002A, 0x0222}, {0x0F12, 0x0001},
-#else
 	// scene mode normal
 	{0xFCFC, 0xD000}, {0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000},
 	{0x002A, 0x0210}, {0x0F12, 0x0000}, {0x0F12, 0x0000}, {0xfcfc, 0xd000},
@@ -207,18 +158,9 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x0F12, 0x0001}, {0x002A, 0x0220}, {0x0F12, 0x0001}, {0x0028, 0xD000},
 	{0x002A, 0xB0A0}, {0x0F12, 0x0000}, {0x0028, 0x7000}, {0x002A, 0x0222},
 	{0x0F12, 0x0001},
-#endif
     },
 
     {
-	//-------------------Landscape-20
-#if upgrate_setting
-	{0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000}, {0x002A, 0x0210},
-	{0x0F12, 0x001E}, {0x002A, 0x0842}, {0x0F12, 0x6444}, {0x0F12, 0x465A},
-	{0x002A, 0x0912}, {0x0F12, 0x4B3A}, {0x0F12, 0x463F}, {0x002A, 0x09E2},
-	{0x0F12, 0x1A2D}, {0x0F12, 0x4628}, {0x002A, 0x0AB2}, {0x0F12, 0x1328},
-	{0x0F12, 0x3213}, {0x002A, 0x0B82}, {0x0F12, 0x0819}, {0x0F12, 0x3204},
-#else
 	// land scape
 	{0xFCFC, 0xD000}, {0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000},
 	{0x002A, 0x0210}, {0x0F12, 0x001E}, {0x0F12, 0x000A}, {0xfcfc, 0xd000},
@@ -231,7 +173,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x0F12, 0x0170}, {0x0F12, 0x0250}, {0x002A, 0x168C}, {0x0F12, 0x0380},
 	{0x0F12, 0x0800}, {0x002A, 0x0544}, {0x0F12, 0x0100}, {0x0F12, 0x0800},
 	{0x002A, 0x04B4}, {0x0F12, 0x0000}, {0x0F12, 0x0000}, {0x0F12, 0x0001},
-#endif
     },
 
     {
@@ -250,17 +191,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 
     {
 	//----------------------Night-44
-#if 0
-{0x0028, 0x7000},{0x002A, 0x0530},{0x0F12, 0x3415},{0x002A, 0x0534},{0x0F12, 0x682A},
-{0x002A, 0x167C},{0x0F12, 0x8235},{0x002A, 0x1680},{0x0F12, 0x1A80},{0x0F12, 0x0006},
-{0x002A, 0x0538},{0x0F12, 0x3415},{0x002A, 0x053C},{0x0F12, 0x682A},{0x002A, 0x1684},
-{0x0F12, 0x8235},{0x002A, 0x1688},{0x0F12, 0x1A80},{0x0F12, 0x0006},{0x002A, 0x0540},
-{0x0F12, 0x0180},{0x0F12, 0x0250},{0x002A, 0x168C},{0x0F12, 0x0340},{0x0F12, 0x0820},
-{0x002A, 0x0544},{0x0F12, 0x0100},{0x0028, 0x7000},{0x002A, 0x023C},{0x0F12, 0x0002}, 
-{0x002A, 0x0240},{0x0F12, 0x0001},{0x002A, 0x0230},{0x0F12, 0x0001},{0x002A, 0x023E}, 
-{0x0F12, 0x0001},{0x002A, 0x0220},{0x0F12, 0x0001},{0x0028, 0xD000},{0x002A, 0xB0A0}, 
-{0x0F12, 0x0000},{0x0028, 0x7000},{0x002A, 0x0222},{0x0F12, 0x0001},
-#else
 	{0xFCFC, 0xD000}, {0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000},
 	{0x002A, 0x0210}, {0x0F12, 0x0000}, {0x0F12, 0x0000}, {0xFCFC, 0xD000},
 	{0x0028, 0x7000}, {0x002A, 0x12B8}, {0x0F12, 0x0B00}, {0x0028, 0x7000},
@@ -276,20 +206,9 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x002A, 0x0230}, {0x0F12, 0x0001}, {0x002A, 0x023E}, {0x0F12, 0x0001},
 	{0x002A, 0x0220}, {0x0F12, 0x0001}, {0x0028, 0xD000}, {0x002A, 0xB0A0},
 	{0x0F12, 0x0000}, {0x0028, 0x7000}, {0x002A, 0x0222}, {0x0F12, 0x0001},
-
-#endif
     },
 
     {
-	//----------------------Portrait-6
-#if upgrate_setting
-	{0x0028, 0x7000},
-	{0x002A, 0x020C},
-	{0x0F12, 0x0000},
-	{0x002A, 0x0210},
-	{0x0F12, 0x0000},
-	{0x0F12, 0xFFCC},
-#else
 	// portrait
 	{0xFCFC, 0xD000}, {0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000},
 	{0x002A, 0x0210}, {0x0F12, 0x0000}, {0x0F12, 0xFFF6}, {0xfcfc, 0xd000},
@@ -302,24 +221,9 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x0F12, 0x0170}, {0x0F12, 0x0250}, {0x002A, 0x168C}, {0x0F12, 0x0380},
 	{0x0F12, 0x0800}, {0x002A, 0x0544}, {0x0F12, 0x0100}, {0x0F12, 0x0800},
 	{0x002A, 0x04B4}, {0x0F12, 0x0000}, {0x0F12, 0x0000}, {0x0F12, 0x0001},
-#endif
     },
 
     {
-	//----------------------Sports-42
-#if upgrate_setting
-	{0x0028, 0x7000}, {0x002A, 0x0530}, {0x0F12, 0x1A0A}, {0x002A, 0x0534},
-	{0x0F12, 0x4e20}, {0x002A, 0x167C}, {0x0F12, 0x682A}, {0x002A, 0x1680},
-	{0x0F12, 0x8235}, {0x0F12, 0x0000}, {0x002A, 0x0538}, {0x0F12, 0x1A0A},
-	{0x002A, 0x053C}, {0x0F12, 0x4e20}, {0x002A, 0x1684}, {0x0F12, 0x682A},
-	{0x002A, 0x1688}, {0x0F12, 0x8235}, {0x0F12, 0x0000}, {0x002A, 0x0540},
-	{0x0F12, 0x0300}, {0x0F12, 0x0380}, {0x002A, 0x168C}, {0x0F12, 0x0480},
-	{0x0F12, 0x0800}, {0x002A, 0x0544}, {0x0F12, 0x0100}, {0x002A, 0x023C},
-	{0x0F12, 0x0000}, {0x002A, 0x0240}, {0x0F12, 0x0001}, {0x002A, 0x0230},
-	{0x0F12, 0x0001}, {0x002A, 0x023E}, {0x0F12, 0x0001}, {0x002A, 0x0220},
-	{0x0F12, 0x0001}, {0x0028, 0xD000}, {0x002A, 0xB0A0}, {0x0F12, 0x0000},
-	{0x002A, 0x0222}, {0x0F12, 0x0001},
-#else
 	// sport
 	{0xFCFC, 0xD000}, {0x0028, 0x7000}, {0x002A, 0x020C}, {0x0F12, 0x0000},
 	{0x002A, 0x0210}, {0x0F12, 0x0000}, {0x0F12, 0x0000}, {0xfcfc, 0xd000},
@@ -331,7 +235,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x0F12, 0x0200}, {0x0F12, 0x0200}, {0x002A, 0x168C}, {0x0F12, 0x0200},
 	{0x0F12, 0x0200}, {0x002A, 0x0544}, {0x0F12, 0x0100}, {0x0F12, 0x8000},
 	{0x002A, 0x04B4}, {0x0F12, 0x0001}, {0x0F12, 0x00C8}, {0x0F12, 0x0001},
-#endif
     },
 
     {
@@ -366,11 +269,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
     },
     {
 	//-------------------Party
-#if 0
-{0x0028,0x7000},{0x002A,0x04D2},{0x0F12,0x0677},{0x002A,0x04A0},{0x0F12,0x0545},
-{0x0F12,0x0001},{0x0F12,0x0400},{0x0F12,0x0001},{0x0F12,0x0640},{0x0F12,0x0001},
-{0x0028,0x7000},{0x002A,0x020C},{0x0F12,0x0000},
-#else // use wb -cloudy setting
 	{0x0028, 0x7000},
 	{0x002A, 0x04D2},
 	{0x0F12, 0x0677},
@@ -381,11 +279,9 @@ static struct msm_camera_i2c_reg_conf s5k5ca_best_shot[][70] = {
 	{0x0f12, 0x0001},
 	{0x0f12, 0x0583},
 	{0x0f12, 0x0001},
-#endif
     },
 
 };
-#if 1
 static uint16_t s5k5ca_special_effect_size[] = {5, 5, 5, 5, 5, 5};
 static struct msm_camera_i2c_reg_conf s5k5ca_special_effect[][5] = {
     {{0x0028, 0x7000},
@@ -419,40 +315,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_special_effect[][5] = {
      {0x002a, 0x021E},
      {0x0F12, 0x0006}}, // sketch
 };
-#endif
-#if upgrate_setting
-static uint16_t s5k5ca_iso_size[] = {5, 5, 5, 5};
-static struct msm_camera_i2c_reg_conf s5k5ca_iso[][5] = {
-
-    {
-	{0x0028, 0x7000},
-	{0x002A, 0x04B4},
-	{0x0F12, 0x0000},
-	{0x0F12, 0x0000},
-	{0x0F12, 0x0001},
-    }, // off
-    {
-	{0x0028, 0x7000},
-	{0x002A, 0x04B4},
-	{0x0F12, 0x0001},
-	{0x0F12, 0x0064},
-	{0x0F12, 0x0001},
-    }, // 100
-    {
-	{0x0028, 0x7000},
-	{0x002A, 0x04B4},
-	{0x0F12, 0x0001},
-	{0x0F12, 0x00C8},
-	{0x0F12, 0x0001},
-    }, // 200
-    {
-	{0x0028, 0x7000},
-	{0x002A, 0x04B4},
-	{0x0F12, 0x0001},
-	{0x0F12, 0x0190},
-	{0x0F12, 0x0001},
-    }, // 400
-#else
 static uint16_t s5k5ca_iso_size[] = {37, 33, 33, 33, 33, 33,
 				     33, 33, 33, 33, 33};
 static struct msm_camera_i2c_reg_conf s5k5ca_iso[][37] = {
@@ -583,8 +445,6 @@ static struct msm_camera_i2c_reg_conf s5k5ca_iso[][37] = {
 	{0x0F12, 0x0001},
     },
 
-#endif
-
 };
 static struct msm_camera_i2c_reg_conf s5k5ca_preview_settings[] = {
     {0x0028, 0x7000},
@@ -713,7 +573,6 @@ static void __exit s5k5ca_exit_module(void)
 		i2c_del_driver(&s5k5ca_i2c_driver);
 	return;
 }
-#if 1
 static int32_t
 s5k5ca_sensor_enable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 {
@@ -725,7 +584,6 @@ s5k5ca_sensor_enable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 			 (void *)&i2c_conf->i2c_mux_mode);
 	return 0;
 }
-#endif
 static int32_t
 s5k5ca_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
 {
@@ -747,10 +605,7 @@ int32_t s5k5ca_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	power_setting = &power_setting_array->power_setting[index];
 
 	CDBG("peter: %s:%d\n", __func__, __LINE__);
-#if 0
-for(i=0;i<data->gpio_conf->cam_gpio_req_tbl_size;i++)
-CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gpio),gpio_req[i].label);
-#endif
+
 	rc = msm_camera_request_gpio_table(
 	    data->gpio_conf->cam_gpio_req_tbl,
 	    data->gpio_conf->cam_gpio_req_tbl_size, 1);
@@ -776,7 +631,7 @@ CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gp
 	if (power_setting->config_val) {
 		//		char *name=NULL;
 		//		name =
-		//kzalloc(sizeof(char)*strlen("cam_clk"),GFP_KERNEL);
+		// kzalloc(sizeof(char)*strlen("cam_clk"),GFP_KERNEL);
 		//		memcpy(name,"cam_clk",sizeof(char)*strlen("cam_clk"));
 		//		s_ctrl->clk_info[power_setting->seq_val].clk_name
 		//= name;
@@ -974,7 +829,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		usleep(10000);
 		sensor_state = 0;
-#if 1
 		rc =
 		    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client, s5k5ca_recommend_settings,
@@ -982,11 +836,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			MSM_CAMERA_I2C_WORD_DATA);
 		// usleep(140000);
 		pr_err("%s, sensor write init setting!X", __func__);
-#else
-		pr_err("%s, sensor write init setting move to "
-		       "CFG_SET_START_STREAM!X",
-		       __func__);
-#endif
 		break;
 	case CFG_SET_RESOLUTION:
 		pr_err("%s, sensor_state:%d setting:%d CFG_SET_RESOLUTION!!",
@@ -1068,7 +917,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			if (current_scene_flag == 0) // Normal
 				s5k5ca_shutter_speed_switch(s_ctrl, 4);
 			else // other mode if global_current_shutter_speed=0 ,do
-			     // nothiing
+				// nothiing
 				s5k5ca_shutter_speed_switch(
 				    s_ctrl, global_current_shutter_speed);
 
@@ -1101,14 +950,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		pr_err("%s, sensor_state:%d sensor start stream!!", __func__,
 		       sensor_state);
 		{
-#if 0
-		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
-			s_ctrl->sensor_i2c_client, s5k5ca_recommend_settings,
-			ARRAY_SIZE(s5k5ca_recommend_settings),
-			MSM_CAMERA_I2C_WORD_DATA);
-		msleep(140);
-		pr_err("%s, sensor write init setting!X", __func__);
-#else
 			// Stream on command:
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 			    s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1132,28 +973,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				       s_ctrl->sensordata->sensor_name, rc);
 				// return rc;
 			}
-// usleep(140000);
-#endif
 			sensor_state = 1;
 		}
-#if 0
-		else if( sensor_state == 1 )
-		{
-			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
-				s_ctrl->sensor_i2c_client, s5k5ca_preview_settings,
-				ARRAY_SIZE(s5k5ca_preview_settings),
-				MSM_CAMERA_I2C_WORD_DATA);
-//			sensor_state = 2;
-		}
-		else if( sensor_state == 2 )
-		{
-			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
-				s_ctrl->sensor_i2c_client, s5k5ca_capture_settings,
-				ARRAY_SIZE(s5k5ca_capture_settings),
-				MSM_CAMERA_I2C_WORD_DATA);
-//			sensor_state = 1;
-		}
-#endif
 		break;
 	case CFG_GET_SENSOR_INIT_PARAMS:
 		cdata->cfg.sensor_init_params =
@@ -1434,7 +1255,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		global_current_iso_state = 0;
 		current_scene_flag = (*((int *)(cdata->cfg.setting)));
 		//**************************initial normal
-		//mode***********************
+		// mode***********************
 		// if(night_mode_preview_flag)
 		{
 			pr_err("%s:%d initial normal mode=%d \n", __func__,
@@ -1464,21 +1285,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 				s_ctrl->sensor_i2c_client, 0x0F12, 0x067F,
 				MSM_CAMERA_I2C_WORD_DATA);
-#if 0			   
-				//************Briightness*****************
-				rc|=s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
-                           s_ctrl->sensor_i2c_client,
-                           0x0028, 0x7000,
-                           MSM_CAMERA_I2C_WORD_DATA);  
-				rc|=s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
-                           s_ctrl->sensor_i2c_client,
-                           0x002a, 0x020C,
-                           MSM_CAMERA_I2C_WORD_DATA); 
-			      rc|=s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
-                           s_ctrl->sensor_i2c_client,
-                           0x0F12, 0x0000,
-                           MSM_CAMERA_I2C_WORD_DATA);
-#endif
 			reduce_party_cloudy_flag = 0;
 		}
 		//************************* reduce party&cloudy--***************
@@ -1663,7 +1469,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		//***********************iso_setting--*******************************
 	} break;
-#if 1
 	case CFG_SET_EFFECT: {
 		uint16_t effect;
 		//		pr_err("%s:%d CFG_SET_EFFECT =%d\n", __func__,
@@ -1803,11 +1608,11 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			gain = 1;
 		memcpy(cdata->cfg.setting, (void *)&gain, sizeof(int32_t));
 		//			memcpy((void*)(cdata), (void*)&data,
-		//sizeof(data));
+		// sizeof(data));
 		//			rc=copy_to_user((cdata->cfg.setting),&gain,sizeof(gain));
 		//		if(rc){
 		//		  	 pr_err("rc:%ld copy to user
-		//fail\n",rc);
+		// fail\n",rc);
 		//			return -EFAULT;
 		//			}
 		rc = 0;
@@ -1917,7 +1722,6 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			s5k5ca_iso_size[iso_value], MSM_CAMERA_I2C_WORD_DATA);
 
 	} break;
-#endif
 	// Qualcomm patch--
 	default:
 		pr_err("%s:%d value:%d to do the other config case\n", __func__,
