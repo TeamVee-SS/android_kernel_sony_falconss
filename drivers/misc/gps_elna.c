@@ -17,13 +17,6 @@
  *
  */
 
-// ALERT:relocate gps_elna.c under .\kernel\drivers\misc
-
-/*
-* Makefile//TODO:Here is makefile reference
-* obj-$(CONFIG_GPS_ELNA)+= gps_elna.o
-*/
-
 #include <linux/delay.h>
 #include <linux/fs.h>
 #include <linux/gpio.h>
@@ -38,23 +31,12 @@
 #include <linux/list.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
+#include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
-
-#include <linux/of_gpio.h>
-#include <linux/regulator/consumer.h>
-
-// TODO:replace and include corresponding head file for VEN/IRQ/FIRM I/O
-// configuration
-//#include <plat/gpio-core.h>
-//#include <plat/gpio-cfg.h>
-//#include <plat/gpio-cfg-helpers.h>
-
-//#define pr_err printk
-//#define pr_debug printk
-//#define pr_warning printk
 
 #define DRIVER_AUTHOR "Murphy Ou"
 #define DRIVER_NAME GPS_ELNA_DEVICE_NAME
@@ -80,14 +62,8 @@
 typedef struct GPS_ELNA_CTRL_BLOCK_Tag {
 	wait_queue_head_t read_wq;
 	struct mutex read_mutex;
-	// struct i2c_client *client;
 	struct miscdevice gps_elna_device;
-	// unsigned int      ven_gpio;
-	// unsigned int      firm_gpio;
-	// unsigned int      irq_gpio;
-	// bool              irq_enabled;
 	spinlock_t irq_enabled_lock;
-
 	struct device *dev;
 	unsigned int gpio_enable;
 	enum of_gpio_flags gpio_enable_flag;
@@ -111,11 +87,9 @@ static ssize_t gps_elna_dev_read(struct file *filp, char __user *buf,
 	if (count > MAX_BUFFER_SIZE)
 		count = MAX_BUFFER_SIZE;
 
-	printk("%s : reading %zu bytes.\n", __func__, count);
+	pr_debug("%s: reading %zu bytes.\n", __func__, count);
 
 	mutex_lock(&gps_elna_ctrl_block->read_mutex);
-	/* Read data */
-	// ret = i2c_master_recv(gps_elna_ctrl_block->client, tmp, count);
 	ret = count;
 	mutex_unlock(&gps_elna_ctrl_block->read_mutex);
 
@@ -133,11 +107,11 @@ static ssize_t gps_elna_dev_read(struct file *filp, char __user *buf,
 		return -EFAULT;
 	}
 
-	printk("IFD->PC:");
+	pr_debug("%s: IFD->PC:", __func__);
 	for (i = 0; i < ret; i++) {
-		printk(" %02X", tmp[i]);
+		pr_debug(" %02X", tmp[i]);
 	}
-	printk("\n");
+	pr_debug("\n");
 
 	return ret;
 }
@@ -145,9 +119,6 @@ static ssize_t gps_elna_dev_read(struct file *filp, char __user *buf,
 static ssize_t gps_elna_dev_write(struct file *filp, const char __user *buf,
 				  size_t count, loff_t *offset)
 {
-	// struct miscdevice *m = filp->private_data;
-	// GPS_ELNA_CTRL_BLOCK_T *gps_elna_ctrl_block = container_of(m,
-	// GPS_ELNA_CTRL_BLOCK_T, gps_elna_device);
 	char tmp[MAX_BUFFER_SIZE];
 	int ret, i;
 
@@ -159,35 +130,25 @@ static ssize_t gps_elna_dev_write(struct file *filp, const char __user *buf,
 		return -EFAULT;
 	}
 
-	printk("%s : writing %zu bytes.\n", __func__, count);
+	pr_debug("%s : writing %zu bytes.\n", __func__, count);
 
 	/* Write data */
-	// ret = i2c_master_send(gps_elna_ctrl_block->client, tmp, count);
 	ret = count;
 	if (ret != count) {
 		pr_err("%s : i2c_master_send returned %d\n", __func__, ret);
 		ret = -EIO;
 	}
-	printk("PC->IFD:");
+	pr_debug("%s: IFD->PC:", __func__);
 	for (i = 0; i < count; i++) {
-		printk(" %02X", tmp[i]);
+		pr_debug(" %02X", tmp[i]);
 	}
-	printk("\n");
+	pr_debug("\n");
 
 	return ret;
 }
 
 static int gps_elna_dev_open(struct inode *inode, struct file *filp)
 {
-	struct miscdevice *m = filp->private_data;
-	GPS_ELNA_CTRL_BLOCK_T *gps_elna_ctrl_block =
-	    container_of(m, GPS_ELNA_CTRL_BLOCK_T, gps_elna_device);
-
-	printk("[GPS_DBG] - gps_elna_dev_open(), private_data = 0x%x\n",
-	       (int)gps_elna_ctrl_block);
-
-	pr_debug("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
-
 	return 0;
 }
 
@@ -202,7 +163,7 @@ static long gps_elna_dev_ioctl(struct file *filp, unsigned int cmd,
 	case GPS_ELNA_SET_PWR: {
 		if (arg == 1) {
 			/* power on */
-			printk("[GPS_DBG] - %s power on\n", __func__);
+			pr_debug("[GPS_DBG] %s: power on\n", __func__);
 
 			if (GPS_ELNA_REGULATOR_L16_ENABLE)
 				gps_elna_power_on_l16(gps_elna_ctrl_block,
@@ -211,11 +172,9 @@ static long gps_elna_dev_ioctl(struct file *filp, unsigned int cmd,
 			if (GPS_ELNA_REGULATOR_L19_ENABLE)
 				gps_elna_power_on_l19(gps_elna_ctrl_block,
 						      true);
-
-			// msleep(10);
 		} else if (arg == 0) {
 			/* power off */
-			printk("[GPS_DBG] - %s power off\n", __func__);
+			pr_debug("[GPS_DBG] %s: power off\n", __func__);
 
 			if (GPS_ELNA_REGULATOR_L16_ENABLE)
 				gps_elna_power_on_l16(gps_elna_ctrl_block,
@@ -224,17 +183,15 @@ static long gps_elna_dev_ioctl(struct file *filp, unsigned int cmd,
 			if (GPS_ELNA_REGULATOR_L19_ENABLE)
 				gps_elna_power_on_l19(gps_elna_ctrl_block,
 						      false);
-
-			// msleep(50);
 		} else {
-			pr_err("%s bad arg %u\n", __func__, (unsigned int)arg);
+			pr_err("%s: bad arg %u\n", __func__, (unsigned int)arg);
 			return -EINVAL;
 		}
 
 		break;
 	}
 	default: {
-		pr_err("%s bad ioctl %u\n", __func__, cmd);
+		pr_err("%s: bad ioctl %u\n", __func__, cmd);
 		return -EINVAL;
 	}
 	}
@@ -263,40 +220,36 @@ static int gps_elna_power_on_l16(GPS_ELNA_CTRL_BLOCK_T *data, bool on)
 	int rc;
 
 	if (on == false) {
-		printk("[GPS_DBG] - gps_elna_power_on_l16(), on = false.\n");
 		goto power_off;
 	}
-
-	printk("[GPS_DBG] - gps_elna_power_on_l16(), on = true.\n");
 
 	// L16
 	rc = gps_elna_set_optimum_mode_check(data->vcc_elna_l16,
 					     MXT_ELNA_L16_ACTIVE_LOAD_UA);
-
 	if (rc < 0) {
 		dev_err(data->dev,
-			"Regulator vcc_elna_l16 set_opt failed rc=%d\n", rc);
+			"%s: Regulator vcc_elna_l16 set_opt failed rc=%d\n", __func__,
+			rc);
 
-		printk("[GPS_DBG] - gps_elna_set_optimum_mode_check(), "
-		       "vcc_elna_l16 - fail.\n");
+		pr_debug("[GPS_DBG] %s: gps_elna_set_optimum_mode_check(), "
+			 "vcc_elna_l16 - fail.\n",
+			 __func__);
 
 		return rc;
 	}
 
 	rc = regulator_enable(data->vcc_elna_l16);
-
 	if (rc) {
 		dev_err(data->dev,
-			"Regulator vcc_elna_l16 enable failed rc=%d\n", rc);
+			"%s: Regulator vcc_elna_l16 enable failed rc=%d\n",
+			__func__, rc);
 
-		printk(
-		    "[GPS_DBG] - regulator_enable(), vcc_elna_l16 - fail.\n");
+		pr_debug(
+		    "[GPS_DBG] %s: regulator_enable(), vcc_elna_l16 - fail.\n",
+		    __func__);
 
 		goto error_reg_en_vcc_elna_l16;
 	}
-
-	// msleep(150);
-	printk("[GPS_DBG] - gps_elna_power_on_l16(), on = true, OK.\n");
 
 	return 0;
 
@@ -309,9 +262,6 @@ power_off:
 	gps_elna_set_optimum_mode_check(data->vcc_elna_l16, 0);
 	regulator_disable(data->vcc_elna_l16);
 
-	// msleep(50);
-	printk("[GPS_DBG] - gps_elna_power_on_l16(), on = false, OK.\n");
-
 	return 0;
 }
 
@@ -320,40 +270,36 @@ static int gps_elna_power_on_l19(GPS_ELNA_CTRL_BLOCK_T *data, bool on)
 	int rc;
 
 	if (on == false) {
-		printk("[GPS_DBG] - gps_elna_power_on_l19(), on = false.\n");
 		goto power_off;
 	}
-
-	printk("[GPS_DBG] - gps_elna_power_on_l19(), on = true.\n");
 
 	// L19
 	rc = gps_elna_set_optimum_mode_check(data->vcc_elna_l19,
 					     MXT_ELNA_L19_ACTIVE_LOAD_UA);
-
 	if (rc < 0) {
 		dev_err(data->dev,
-			"Regulator vcc_elna_l19 set_opt failed rc=%d\n", rc);
+			"%s: Regulator vcc_elna_l19 set_opt failed rc=%d\n",
+			__func__, rc);
 
-		printk("[GPS_DBG] - gps_elna_set_optimum_mode_check(), "
-		       "vcc_elna_l19 - fail.\n");
+		pr_debug("[GPS_DBG] %s: gps_elna_set_optimum_mode_check(), "
+			 "vcc_elna_l19 - fail.\n",
+			 __func__);
 
 		return rc;
 	}
 
 	rc = regulator_enable(data->vcc_elna_l19);
-
 	if (rc) {
 		dev_err(data->dev,
-			"Regulator vcc_elna_l19 enable failed rc=%d\n", rc);
+			"%s: Regulator vcc_elna_l19 enable failed rc=%d\n",
+			__func__, rc);
 
-		printk(
-		    "[GPS_DBG] - regulator_enable(), vcc_elna_l19 - fail.\n");
+		pr_debug(
+		    "[GPS_DBG] %s: regulator_enable(), vcc_elna_l19 - fail.\n",
+		    __func__);
 
 		goto error_reg_en_vcc_elna_l19;
 	}
-
-	// msleep(150);
-	printk("[GPS_DBG] - gps_elna_power_on_l19(), on = true, OK.\n");
 
 	return 0;
 
@@ -365,9 +311,6 @@ error_reg_en_vcc_elna_l19:
 power_off:
 	gps_elna_set_optimum_mode_check(data->vcc_elna_l19, 0);
 	regulator_disable(data->vcc_elna_l19);
-
-	// msleep(50);
-	printk("[GPS_DBG] - gps_elna_power_on_l19(), on = false, OK.\n");
 
 	return 0;
 }
@@ -384,8 +327,9 @@ static int gps_elna_regulator_configure_l16(GPS_ELNA_CTRL_BLOCK_T *data,
 	data->vcc_elna_l16 = regulator_get(data->dev, "vcc_elna_l16");
 	if (IS_ERR(data->vcc_elna_l16)) {
 		rc = PTR_ERR(data->vcc_elna_l16);
-		dev_err(data->dev, "Regulator get failed vcc_elna_l16 rc=%d\n",
-			rc);
+		dev_err(data->dev,
+			"%s: Regulator get failed vcc_elna_l16 rc=%d\n",
+			__func__, rc);
 		return rc;
 	}
 
@@ -394,14 +338,13 @@ static int gps_elna_regulator_configure_l16(GPS_ELNA_CTRL_BLOCK_T *data,
 					   MXT_ELNA_L16_VTG_MIN_UV,
 					   MXT_ELNA_L16_VTG_MAX_UV);
 		if (rc) {
-			dev_err(data->dev,
-				"regulator set_vtg vcc_elna_l16 failed rc=%d\n",
-				rc);
+			dev_err(
+			    data->dev,
+			    "%s: regulator set_vtg vcc_elna_l16 failed rc=%d\n",
+			    __func__, rc);
 			goto error_set_vtg_vcc_elna_l16;
 		}
 	}
-
-	printk(KERN_INFO "[GPS_DBG] - vcc_elna_l16-supply configuretion ok.");
 
 	return 0;
 
@@ -432,8 +375,9 @@ static int gps_elna_regulator_configure_l19(GPS_ELNA_CTRL_BLOCK_T *data,
 	data->vcc_elna_l19 = regulator_get(data->dev, "vcc_elna_l19");
 	if (IS_ERR(data->vcc_elna_l19)) {
 		rc = PTR_ERR(data->vcc_elna_l19);
-		dev_err(data->dev, "Regulator get failed vcc_elna_l19 rc=%d\n",
-			rc);
+		dev_err(data->dev,
+			"%s: Regulator get failed vcc_elna_l19 rc=%d\n",
+			__func__, rc);
 		return rc;
 	}
 
@@ -442,14 +386,13 @@ static int gps_elna_regulator_configure_l19(GPS_ELNA_CTRL_BLOCK_T *data,
 					   MXT_ELNA_L19_VTG_MIN_UV,
 					   MXT_ELNA_L19_VTG_MAX_UV);
 		if (rc) {
-			dev_err(data->dev,
-				"regulator set_vtg vcc_elna_l19 failed rc=%d\n",
-				rc);
+			dev_err(
+			    data->dev,
+			    "%s: regulator set_vtg vcc_elna_l19 failed rc=%d\n",
+			    __func__, rc);
 			goto error_set_vtg_vcc_elna_l19;
 		}
 	}
-
-	printk(KERN_INFO "[GPS_DBG] - vcc_elna_l19-supply configuretion ok.");
 
 	return 0;
 
@@ -482,9 +425,8 @@ static int gps_elna_dts_parsing(GPS_ELNA_CTRL_BLOCK_T *data)
 	data->gpio_enable = of_get_named_gpio_flags(np, "elna,enable-gpio", 0,
 						    &(data->gpio_enable_flag));
 
-	printk(KERN_INFO
-	       "[GPS_DBG] - gpio_enable = %d, gpio_enable_flag = %d\n",
-	       data->gpio_enable, (int)(data->gpio_enable_flag));
+	pr_debug("[GPS_DBG] %s: gpio_enable = %d, gpio_enable_flag = %d\n",
+		 __func__, data->gpio_enable, (int)(data->gpio_enable_flag));
 
 	if (GPS_ELNA_REGULATOR_L16_ENABLE)
 		gps_elna_regulator_configure_l16(data, true);
@@ -531,27 +473,21 @@ static int __devinit gps_elna_probe(struct platform_device *pdev)
 
 	ret = misc_register(&gps_elna_ctrl_block->gps_elna_device);
 	if (ret) {
-		printk(KERN_INFO "[GPS_DBG] - misc_register failed\n");
+		pr_err("[GPS_DBG] %s: misc_register failed\n", __func__);
 		ret = -EINVAL;
 		goto err_misc_register;
 	}
 
-	printk(KERN_INFO "[GPS_DBG] - misc_register ok\n");
+	pr_info("[GPS_DBG] %s: successfully probed\n", __func__);
 
 	return 0;
 
-// err_request_irq_failed:
-//  misc_deregister(&gps_elna_ctrl_block->gps_elna_device);
 err_misc_register:
 	mutex_destroy(&gps_elna_ctrl_block->read_mutex);
 err_dts_parsing:
 	kfree(gps_elna_ctrl_block);
 err_exit:
-	// gpio_free(gps_elna_ctrl_block->irq_gpio);
-	// gpio_free(gps_elna_ctrl_block->ven_gpio);
-	// gpio_free(gps_elna_ctrl_block->firm_gpio);
-
-	printk(KERN_INFO "[GPS_DBG] - error\n");
+	pr_err("[GPS_DBG] %s: error\n", __func__);
 
 	return ret;
 }
@@ -573,12 +509,9 @@ static int __init gps_elna_dev_init(void)
 {
 	int ret = 0;
 
-	printk(KERN_INFO "[GPS_DBG] - Loading GPS eLNA driver\n");
-
 	ret = platform_driver_register(&gps_elna_platform_driver);
 	if (ret) {
-		printk(KERN_ERR "[GPS_DBG] - %s failed to load\n",
-		       __FUNCTION__);
+		pr_err("[GPS_DBG] %s: failed to load\n", __func__);
 	}
 
 	return ret;
@@ -586,7 +519,7 @@ static int __init gps_elna_dev_init(void)
 
 static void __exit gps_elna_dev_exit(void)
 {
-	printk(KERN_INFO "[GPS_DBG] - Unloading GPS eLNA driver\n");
+	pr_info("[GPS_DBG] %s: Unloading GPS eLNA driver\n", __func__);
 	platform_driver_unregister(&gps_elna_platform_driver);
 }
 
