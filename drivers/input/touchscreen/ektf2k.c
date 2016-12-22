@@ -212,7 +212,6 @@ static int __hello_packet_handler(struct i2c_client *client);
 
 // For Firmware Update
 int elan_iap_open(struct inode *inode, struct file *filp) { return 0; }
-
 int elan_iap_release(struct inode *inode, struct file *filp) { return 0; }
 
 static ssize_t elan_iap_write(struct file *filp, const char *buff, size_t count,
@@ -724,10 +723,6 @@ static int __hello_packet_handler(struct i2c_client *client)
 	if (rc < 0)
 		rc = i2c_master_recv(client, buf_recv, 8);
 
-	pr_info("[ELAN] %s: hello packet = [%2x:%2X:%2x:%2x:%2x:%2x:%2x:%2x]\n",
-		__func__, buf_recv[0], buf_recv[1], buf_recv[2], buf_recv[3],
-		buf_recv[4], buf_recv[5], buf_recv[6], buf_recv[7]);
-
 	if (buf_recv[0] == 0x55 && buf_recv[1] == 0x55 && buf_recv[2] == 0x80 &&
 	    buf_recv[3] == 0x80) {
 		if (buf_recv[6] == 0x04 && buf_recv[7] == 0x21)
@@ -833,14 +828,11 @@ static int elan_ktf2k_ts_setup(struct i2c_client *client)
 	int touch_retry = 0;
 
 	touch_retry = 3;
-
 	do {
 		elan_ktf2k_ts_hw_reset(client);
 		rc = __hello_packet_handler(client);
 		touch_retry--;
 	} while (rc == 0x88 && touch_retry > 0);
-
-	pr_info("[ELAN] %s: first hellopacket's rc = [%d]\n", __func__, rc);
 
 	mdelay(10);
 
@@ -851,6 +843,7 @@ static int elan_ktf2k_ts_setup(struct i2c_client *client)
 			       __func__, rc);
 		dev_dbg(&client->dev, "[ELAN] %s: firmware checking done\n",
 			__func__);
+
 		// Check for FW_VERSION, if 0x0000 means FW update fail!
 		if (FW_VERSION == 0x00) {
 			rc = 0x80;
@@ -928,9 +921,6 @@ static int elan_ktf2k_ts_set_talking_state(struct i2c_client *client, int mode)
 
 	cmd[2] = mode;
 
-	pr_info("[ELAN] %s: dump cmd: %02x, %02x, %02x, %02x\n", __func__,
-		cmd[0], cmd[1], cmd[2], cmd[3]);
-
 	if ((i2c_master_send(client, cmd, sizeof(cmd))) != sizeof(cmd)) {
 		dev_err(&client->dev, "[ELAN] %s: i2c_master_send failed\n",
 			__func__);
@@ -949,16 +939,12 @@ static int elan_ktf2k_ts_get_talking_state(struct i2c_client *client)
 	if (chip_type == 0x21)
 		cmd[1] = 0x5D;
 
-	pr_info("[ELAN] %s: dump cmd: %02x, %02x, %02x, %02x\n", __func__,
-		cmd[0], cmd[1], cmd[2], cmd[3]);
-
 	rc = elan_ktf2k_ts_get_data(client, cmd, buf, 4);
 	if (rc)
 		return rc;
 
 	// third parameter is the one to distinquish the mode
 	mode_state = buf[2];
-	pr_info("[ELAN] %s: dump repsponse: %0x\n", __func__, mode_state);
 
 	return mode_state;
 }
@@ -1101,51 +1087,26 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 					"status: %d\n",
 					__func__,
 					gpio_get_value(private_ts->intr_gpio));
-				if (chip_type == 0x22) {
-					elan_ktf2k_set_scan_mode(
-					    private_ts->client, 0);
+
+				elan_ktf2k_set_scan_mode(private_ts->client, 0);
+				elan_ktf2k_ts_set_mode_state(private_ts->client,
+							     chip_mode_set);
+				if (elan_ktf2k_ts_get_mode_state(
+					private_ts->client) != chip_mode_set) {
 					elan_ktf2k_ts_set_mode_state(
 					    private_ts->client, chip_mode_set);
-					if (elan_ktf2k_ts_get_mode_state(
-						private_ts->client) !=
-					    chip_mode_set) {
-						elan_ktf2k_ts_set_mode_state(
-						    private_ts->client,
-						    chip_mode_set);
-					}
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-					if (elan_ktf2k_ts_get_talking_state(
-						private_ts->client) !=
-					    talking_mode_set) {
-						elan_ktf2k_ts_set_talking_state(
-						    private_ts->client,
-						    talking_mode_set);
-					}
-					msleep(10);
-					elan_ktf2k_set_scan_mode(
-					    private_ts->client, 1);
-				} else {
-					if (elan_ktf2k_ts_get_mode_state(
-						private_ts->client) !=
-					    chip_mode_set) {
-						elan_ktf2k_ts_set_mode_state(
-						    private_ts->client,
-						    chip_mode_set);
-					}
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-					if (elan_ktf2k_ts_get_talking_state(
-						private_ts->client) !=
-					    talking_mode_set) {
-						elan_ktf2k_ts_set_talking_state(
-						    private_ts->client,
-						    talking_mode_set);
-					}
-					msleep(10);
 				}
+				elan_ktf2k_ts_set_talking_state(
+				    private_ts->client, talking_mode_set);
+				if (elan_ktf2k_ts_get_talking_state(
+					private_ts->client) !=
+				    talking_mode_set) {
+					elan_ktf2k_ts_set_talking_state(
+					    private_ts->client,
+					    talking_mode_set);
+				}
+				msleep(10);
+				elan_ktf2k_set_scan_mode(private_ts->client, 1);
 				mutex_unlock(&private_ts->lock); // set lock
 			}
 		}
@@ -1306,9 +1267,7 @@ static void elan_ktf2k_ts_work_func(struct work_struct *work)
 static irqreturn_t elan_ktf2k_ts_irq_handler(int irq, void *dev_id)
 {
 	struct elan_ktf2k_ts_data *ts = dev_id;
-	struct i2c_client *client = ts->client;
 
-	dev_dbg(&client->dev, "[ELAN] %s\n", __func__);
 	disable_irq_nosync(ts->client->irq);
 	queue_work(ts->elan_wq, &ts->work);
 
@@ -1512,11 +1471,7 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	int New_FW_ID;
 	int New_FW_VER;
 
-	pr_info("[ELAN] %s: client->addr = [0x%x]  name = [%s]\n", __func__,
-		client->addr, client->name);
-
 	if (client->dev.of_node) {
-		pr_info("[ELAN] %s: of_node\n", __func__);
 		pdata = devm_kzalloc(
 		    &client->dev, sizeof(struct elan_ktf2k_i2c_platform_data),
 		    GFP_KERNEL);
@@ -1556,8 +1511,9 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 
 	INIT_WORK(&ts->work, elan_ktf2k_ts_work_func);
 
-	INIT_DELAYED_WORK(&ts->check_work,
-			  elan_ktf2k_ts_check_work_func); // reset if check hang
+	// reset if check hang
+	INIT_DELAYED_WORK(&ts->check_work, elan_ktf2k_ts_check_work_func);
+
 	mutex_init(&ts->lock);
 
 	ts->client = client;
@@ -1567,39 +1523,31 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 
 	elan_ktf2k_ts_regulator_configure(ts, true);
 	elan_ktf2k_ts_power_on(ts, true);
-	pr_info(
-	    "[ELAN] %s: pdata->intr_gpio = [%d], pdata->reset_gpio = [%d]\n",
-	    __func__, pdata->intr_gpio, pdata->reset_gpio);
 
 	if (gpio_is_valid(pdata->intr_gpio)) {
 		/* configure touchscreen irq gpio */
 		err = gpio_request(pdata->intr_gpio, "elan_intr_gpio");
 		if (err)
-			pr_info("[ELAN] %s: unable to request gpio [%d]\n",
-				__func__, pdata->intr_gpio);
+			pr_err("[ELAN] %s: unable to request gpio [%d]\n",
+			       __func__, pdata->intr_gpio);
 		err = gpio_direction_input(pdata->intr_gpio);
 		client->irq = gpio_to_irq(pdata->intr_gpio);
-		pr_info(
-		    "[ELAN] %s: elan_intr_gpio = [%d], request gpio = [%d]\n",
-		    __func__, pdata->intr_gpio, client->irq);
 	}
 
 	if (gpio_is_valid(pdata->reset_gpio)) {
 		/* configure touchscreen irq gpio */
 		err = gpio_request(pdata->reset_gpio, "elan_reset_gpio");
 		if (err)
-			pr_info("[ELAN] %s: unable to request gpio [%d]\n",
-				__func__, pdata->reset_gpio);
+			pr_err("[ELAN] %s: unable to request gpio [%d]\n",
+			       __func__, pdata->reset_gpio);
 		gpio_direction_output(pdata->reset_gpio, 1);
 	}
 
 	if (gpio_is_valid(pdata->hw_det_gpio)) {
 		touch_panel_type = gpio_get_value(pdata->hw_det_gpio);
-		pr_info("[ELAN] %s: touch_panel_type = [%d]\n", __func__,
-			touch_panel_type);
 	} else {
-		pr_info("[ELAN] %s: ELAN TOUCH HW DET GPIO IS WRONG\n",
-			__func__);
+		pr_err("[ELAN] %s: ELAN TOUCH HW DET GPIO IS WRONG\n",
+		       __func__);
 	}
 
 	if (likely(pdata != NULL)) {
@@ -1647,8 +1595,8 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	ts->input_dev->id.vendor = touch_panel_type;
 	ts->input_dev->id.version = FW_VERSION;
 	ts->input_dev->dev.parent = &client->dev;
-	ts->input_dev->open = NULL;  // mxt_input_open;
-	ts->input_dev->close = NULL; // mxt_input_close;
+	ts->input_dev->open = NULL;
+	ts->input_dev->close = NULL;
 
 	__set_bit(EV_ABS, ts->input_dev->evbit);
 	__set_bit(EV_KEY, ts->input_dev->evbit);
@@ -1722,10 +1670,6 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 
 	elan_ktf2k_touch_sysfs_init();
 
-	dev_info(&client->dev,
-		 "[ELAN] %s: Start touchscreen %s in interrupt mode\n",
-		 __func__, ts->input_dev->name);
-
 #if defined(CONFIG_FB)
 	ts->fb_notif.notifier_call = fb_notifier_callback;
 	err = fb_register_client(&ts->fb_notif);
@@ -1742,8 +1686,6 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 
 	if (misc_register(&ts->firmware) < 0)
 		pr_err("[ELAN] %s: misc_register failed\n", __func__);
-	else
-		pr_info("[ELAN] %s: misc_register finished\n", __func__);
 
 	if (chip_type == 0x22)
 		elan_ktf2k_clear_ram(private_ts->client);
@@ -1846,41 +1788,24 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 
 			if (chip_type == 0x22) {
 				elan_ktf2k_set_scan_mode(private_ts->client, 0);
+			}
+			elan_ktf2k_ts_set_mode_state(private_ts->client,
+						     chip_mode_set);
+			if (elan_ktf2k_ts_get_mode_state(private_ts->client) !=
+			    chip_mode_set) {
 				elan_ktf2k_ts_set_mode_state(private_ts->client,
 							     chip_mode_set);
-				if (elan_ktf2k_ts_get_mode_state(
-					private_ts->client) != chip_mode_set) {
-					elan_ktf2k_ts_set_mode_state(
-					    private_ts->client, chip_mode_set);
-				}
+			}
+			elan_ktf2k_ts_set_talking_state(private_ts->client,
+							talking_mode_set);
+			if (elan_ktf2k_ts_get_talking_state(
+				private_ts->client) != talking_mode_set) {
 				elan_ktf2k_ts_set_talking_state(
 				    private_ts->client, talking_mode_set);
-				if (elan_ktf2k_ts_get_talking_state(
-					private_ts->client) !=
-				    talking_mode_set) {
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-				}
+			}
+			if (chip_type == 0x22) {
 				msleep(10);
 				elan_ktf2k_set_scan_mode(private_ts->client, 1);
-			} else {
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-				if (elan_ktf2k_ts_get_mode_state(
-					private_ts->client) != chip_mode_set) {
-					elan_ktf2k_ts_set_mode_state(
-					    private_ts->client, chip_mode_set);
-				}
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-				if (elan_ktf2k_ts_get_talking_state(
-					private_ts->client) !=
-				    talking_mode_set) {
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-				}
 			}
 			schedule_delayed_work(&private_ts->check_work,
 					      msecs_to_jiffies(2500));
