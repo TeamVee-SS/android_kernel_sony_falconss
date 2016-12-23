@@ -408,6 +408,9 @@ static int lm3533_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
+	/* configure request gpio */
+	gpio_request(18, "leds_lm3533_hwen");
+
 	/* read the default value to check if IC there. */
 	if (i2c_smbus_read_byte_data(
 		client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION) != 0x92) {
@@ -473,7 +476,7 @@ static struct of_device_id ti_leds_lm3533_match_table[] = {
     {},
 };
 #else
-#define mxt_match_table NULL
+#define ti_leds_lm3533_match_table NULL
 #endif
 
 static struct i2c_driver lm3533_driver = {
@@ -487,23 +490,7 @@ static struct i2c_driver lm3533_driver = {
     .probe = lm3533_probe,
     .remove = __devexit_p(lm3533_remove),
 };
-
-static int __init lm3533_module_init(void)
-{
-	int init_int = 0;
-
-	gpio_request(18, "leds_lm3533_hwen");
-	gpio_set_value(18, 1);
-
-	init_int = i2c_add_driver(&lm3533_driver);
-
-	return init_int;
-}
-
-static void __exit lm3533_module_exit(void) { i2c_del_driver(&lm3533_driver); }
-
-module_init(lm3533_module_init);
-module_exit(lm3533_module_exit);
+module_i2c_driver(lm3533_driver);
 
 MODULE_DESCRIPTION("Back Light driver for LM3533");
 MODULE_LICENSE("GPL v2");

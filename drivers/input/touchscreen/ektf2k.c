@@ -1859,20 +1859,7 @@ static struct i2c_driver ektf2k_ts_driver = {
     .remove = __devexit_p(elan_ktf2k_ts_remove),
     .id_table = elan_ktf2k_ts_id,
 };
-
-static int __devinit elan_ktf2k_ts_init(void)
-{
-	return i2c_add_driver(&ektf2k_ts_driver);
-}
-
-static void __exit elan_ktf2k_ts_exit(void)
-{
-	i2c_del_driver(&ektf2k_ts_driver);
-	return;
-}
-
-module_init(elan_ktf2k_ts_init);
-module_exit(elan_ktf2k_ts_exit);
+module_i2c_driver(ektf2k_ts_driver);
 
 MODULE_DESCRIPTION("ELAN KTF2K Touchscreen Driver");
 MODULE_LICENSE("GPL");
