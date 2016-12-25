@@ -1042,13 +1042,8 @@ static struct device_attribute akm8963_attributes[] = {
     __ATTR_NULL,
 };
 
-#define __BIN_ATTR_NULL                                                        \
-	{                                                                      \
-		.attr = {.name = NULL},                                        \
-	}
-
 static struct bin_attribute akm8963_bin_attributes[] = {
-    __BIN_ATTR(accel, 0220, 6, NULL, NULL, akm8963_bin_accel_write),
+    __BIN_ATTR(accel, 0220, NULL, akm8963_bin_accel_write, 6),
     __BIN_ATTR_NULL};
 
 static char const *const compass_class_name = "compass";

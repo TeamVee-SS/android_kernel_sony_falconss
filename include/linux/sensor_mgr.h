@@ -12,13 +12,6 @@
 
 #include <linux/mutex.h>
 
-#define __BIN_ATTR(name_, mode_, size_, private_, read_, write_)               \
-	{                                                                      \
-		.attr = {.name = __stringify(name_), .mode = mode_},           \
-		.size = size_, .private = private_, .read = read_,             \
-		.write = write_,                                               \
-	}
-
 #define sDump_alert(dLevel, fmt, ...) ({ pr_alert(fmt, ##__VA_ARGS__); })
 #define sDump_err(dLevel, fmt, ...)                                            \
 	({                                                                     \

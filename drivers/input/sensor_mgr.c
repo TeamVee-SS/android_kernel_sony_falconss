@@ -190,10 +190,10 @@ static struct device_attribute sensor_class_attrs[] = {
 };
 
 static struct bin_attribute sensor_class_bin_attrs[] = {
-    __BIN_ATTR(deviceInfor, 0440, sizeof(struct device_infor), NULL,
-	       getDeviceInfor, NULL),
-    __BIN_ATTR(calibrate, 0660, sizeof(Sensor_Calibrate_Infor), NULL,
-	       getCalibrate, setCalibrate),
+    __BIN_ATTR(deviceInfor, 0440, getDeviceInfor, NULL,
+	       sizeof(struct device_infor)),
+    __BIN_ATTR(calibrate, 0660, getCalibrate, setCalibrate,
+	       sizeof(Sensor_Calibrate_Infor)),
     __ATTR_NULL,
 };
 
