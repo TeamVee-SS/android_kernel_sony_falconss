@@ -50,7 +50,7 @@ static unsigned int _dispatcher_inflight = 15;
 static unsigned int _cmdbatch_timeout = 2000;
 
 /* Interval for reading and comparing fault detection registers */
-static unsigned int _fault_timer_interval = 200;
+static unsigned int _fault_timer_interval = 50;
 
 /* Local array for the current set of fault detect registers */
 static unsigned int fault_detect_regs[FT_DETECT_REGS_COUNT];
@@ -155,6 +155,7 @@ static inline struct kgsl_cmdbatch *adreno_dispatcher_get_cmdbatch(
 		struct adreno_context *drawctxt)
 {
 	struct kgsl_cmdbatch *cmdbatch = NULL;
+	int pending;
 
 	mutex_lock(&drawctxt->mutex);
 	if (drawctxt->cmdqueue_head != drawctxt->cmdqueue_tail) {
@@ -164,7 +165,32 @@ static inline struct kgsl_cmdbatch *adreno_dispatcher_get_cmdbatch(
 		 * Don't dequeue a cmdbatch that is still waiting for other
 		 * events
 		 */
-		if (kgsl_cmdbatch_sync_pending(cmdbatch)) {
+
+		spin_lock(&cmdbatch->lock);
+		pending = list_empty(&cmdbatch->synclist) ? 0 : 1;
+
+		/*
+		 * If changes are pending and the canary timer hasn't been
+		 * started yet, start it
+		 */
+		if (pending) {
+			/*
+			 * If syncpoints are pending start the canary timer if
+			 * it hasn't already been started
+			 */
+			if (!timer_pending(&cmdbatch->timer))
+				mod_timer(&cmdbatch->timer, jiffies + (5 * HZ));
+			spin_unlock(&cmdbatch->lock);
+		} else {
+			/*
+			 * Otherwise, delete the timer to make sure it is good
+			 * and dead before queuing the buffer
+			 */
+			spin_unlock(&cmdbatch->lock);
+			del_timer_sync(&cmdbatch->timer);
+		}
+
+		if (pending) {
 			cmdbatch = ERR_PTR(-EAGAIN);
 			goto done;
 		}
@@ -1003,12 +1029,6 @@ static int dispatcher_do_fault(struct kgsl_device *device)
 	if (dispatcher->inflight == 0) {
 		KGSL_DRV_WARN(device,
 		"dispatcher_do_fault with 0 inflight commands\n");
-		/*
-		 * For certain faults like h/w fault the interrupts are
-		 * turned off, re-enable here
-		 */
-		if (kgsl_pwrctrl_isenabled(device))
-			kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_ON);
 		return 0;
 	}
 
@@ -1630,7 +1650,13 @@ void adreno_dispatcher_irq_fault(struct kgsl_device *device)
  */
 void adreno_dispatcher_start(struct kgsl_device *device)
 {
+	struct adreno_device *adreno_dev = ADRENO_DEVICE(device);
+
 	complete_all(&device->cmdbatch_gate);
+
+	/* a305b & a305c GPUs are slower than a330 and needs a larger timer */
+	if (adreno_is_a305b(adreno_dev) || adreno_is_a305c(adreno_dev))
+		_fault_timer_interval = 200;
 
 	/* Schedule the work loop to get things going */
 	adreno_dispatcher_schedule(device);
@@ -1703,9 +1729,10 @@ static ssize_t _store_uint(struct adreno_dispatcher *dispatcher,
 		struct dispatcher_attribute *attr,
 		const char *buf, size_t size)
 {
-	unsigned long val;
-	int ret = kstrtoul(buf, 0, &val);
+	unsigned int val = 0;
+	int ret;
 
+	ret = kgsl_sysfs_store(buf, &val);
 	if (ret)
 		return ret;
 
@@ -1720,7 +1747,7 @@ static ssize_t _show_uint(struct adreno_dispatcher *dispatcher,
 		struct dispatcher_attribute *attr,
 		char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%d\n",
+	return snprintf(buf, PAGE_SIZE, "%u\n",
 		*((unsigned int *) attr->value));
 }
 
