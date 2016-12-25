@@ -33,14 +33,10 @@
 struct platform_device;
 
 struct kgsl_clk_stats {
-	unsigned int old_clock_time[KGSL_MAX_PWRLEVELS];
-	unsigned int clock_time[KGSL_MAX_PWRLEVELS];
-	unsigned int on_time_old;
-	ktime_t start;
-	ktime_t stop;
-	unsigned int no_nap_cnt;
-	unsigned int elapsed;
-	unsigned int elapsed_old;
+	unsigned int busy;
+	unsigned int total;
+	unsigned int busy_old;
+	unsigned int total_old;
 };
 
 struct kgsl_pwr_constraint {
@@ -92,9 +88,10 @@ struct kgsl_pwrctrl {
 	unsigned long ctrl_flags;
 	struct kgsl_pwrlevel pwrlevels[KGSL_MAX_PWRLEVELS];
 	unsigned int active_pwrlevel;
-	int thermal_pwrlevel;
+	unsigned int thermal_pwrlevel;
 	unsigned int default_pwrlevel;
 	unsigned int init_pwrlevel;
+	unsigned int wakeup_maxpwrlevel;
 	unsigned int max_pwrlevel;
 	unsigned int min_pwrlevel;
 	unsigned int num_pwrlevels;
@@ -133,7 +130,6 @@ void kgsl_pwrctrl_uninit_sysfs(struct kgsl_device *device);
 void kgsl_pwrctrl_enable(struct kgsl_device *device);
 void kgsl_pwrctrl_disable(struct kgsl_device *device);
 bool kgsl_pwrctrl_isenabled(struct kgsl_device *device);
-bool kgsl_pwrrail_isenabled(struct kgsl_device *device);
 
 static inline unsigned long kgsl_get_clkrate(struct clk *clk)
 {
@@ -159,7 +155,6 @@ int __must_check kgsl_active_count_get(struct kgsl_device *device);
 int __must_check kgsl_active_count_get_light(struct kgsl_device *device);
 void kgsl_active_count_put(struct kgsl_device *device);
 int kgsl_active_count_wait(struct kgsl_device *device, int count);
-void kgsl_pwrctrl_clk(struct kgsl_device *device, int state,
-				int requested_state);
+void kgsl_pwrctrl_busy_time(struct kgsl_device *device, u64 time, u64 busy);
 
 #endif /* __KGSL_PWRCTRL_H */
