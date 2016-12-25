@@ -103,11 +103,6 @@ static struct platform_device ram_console_device = {
 };
 #endif
 
-static void __init msm8610_early_memory(void)
-{
-	of_scan_flat_dt(dt_scan_for_memory_hole, NULL);
-}
-
 static void __init msm8610_reserve(void)
 {
 #ifdef CONFIG_ANDROID_PERSISTENT_RAM
@@ -169,6 +164,5 @@ DT_MACHINE_START(MSM8610_DT, "Qualcomm MSM 8610 (Flattened Device Tree)")
 	.dt_compat = msm8610_dt_match,
 	.restart = msm_restart,
 	.reserve = msm8610_reserve,
-	.init_very_early = msm8610_early_memory,
 	.smp = &arm_smp_ops,
 MACHINE_END
