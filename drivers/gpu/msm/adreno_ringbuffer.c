@@ -20,7 +20,6 @@
 #include "kgsl.h"
 #include "kgsl_sharedmem.h"
 #include "kgsl_cffdump.h"
-#include "kgsl_trace.h"
 
 #include "adreno.h"
 #include "adreno_pm4types.h"
@@ -1143,9 +1142,8 @@ void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
 		constraint = adreno_ringbuffer_get_constraint(device, context);
 
 		/*
-		 * If a constraint is already set, set a new constraint only
-		 * if it is faster.  If the requested constraint is the same
-		 * as the current one, update ownership and timestamp.
+		 * If a constraint is already set, set a new
+		 * constraint only if it is faster
 		 */
 		if ((device->pwrctrl.constraint.type ==
 			KGSL_CONSTRAINT_NONE) || (constraint <
@@ -1156,21 +1154,10 @@ void adreno_ringbuffer_set_constraint(struct kgsl_device *device,
 					context->pwr_constraint.type;
 			device->pwrctrl.constraint.hint.
 					pwrlevel.level = constraint;
-			device->pwrctrl.constraint.owner_id = context->id;
-			device->pwrctrl.constraint.expires = jiffies +
-					device->pwrctrl.interval_timeout;
-			/* Trace the constraint being set by the driver */
-			trace_kgsl_constraint(device,
-					device->pwrctrl.constraint.type,
-					constraint, 1);
-		} else if ((device->pwrctrl.constraint.type ==
-				context->pwr_constraint.type) &&
-			(device->pwrctrl.constraint.hint.pwrlevel.level ==
-				constraint)) {
-			device->pwrctrl.constraint.owner_id = context->id;
-			device->pwrctrl.constraint.expires = jiffies +
-					device->pwrctrl.interval_timeout;
 		}
+
+		device->pwrctrl.constraint.expires = jiffies +
+			device->pwrctrl.interval_timeout;
 	}
 
 }
@@ -1311,20 +1298,26 @@ int adreno_ringbuffer_submitcmd(struct adreno_device *adreno_dev,
 	/* Set the constraints before adding to ringbuffer */
 	adreno_ringbuffer_set_constraint(device, cmdbatch);
 
-	/* CFF stuff executed only if CFF is enabled */
-	kgsl_cffdump_capture_ib_desc(device, context, ibdesc, numibs);
-
 	ret = adreno_ringbuffer_addcmds(&adreno_dev->ringbuffer,
 					drawctxt,
 					flags,
 					&link[0], (cmds - link),
 					cmdbatch->timestamp);
 
-	kgsl_cffdump_regpoll(device,
-		adreno_getreg(adreno_dev, ADRENO_REG_RBBM_STATUS) << 2,
-		0x00000000, 0x80000000);
+#ifdef CONFIG_MSM_KGSL_CFF_DUMP
+	if (ret)
+		goto done;
+	/*
+	 * insert wait for idle after every IB1
+	 * this is conservative but works reliably and is ok
+	 * even for performance simulations
+	 */
+	ret = adreno_idle(device);
+#endif
+
 done:
-	trace_kgsl_issueibcmds(device, context->id, cmdbatch,
+	device->pwrctrl.irq_last = 0;
+	kgsl_trace_issueibcmds(device, context->id, cmdbatch,
 		cmdbatch->timestamp, cmdbatch->flags, ret,
 		drawctxt->type);
 
