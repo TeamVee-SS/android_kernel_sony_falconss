@@ -2,7 +2,7 @@
  * leds-lm3533.c - driver for National Semiconductor LM3533 LEDdriver chip
  *
  * Copyright (C) 2009 Antonio Ospite <ospite@studenti.unina.it>
- * Copyright (C) 2016 Caio Oliveira <caiooliveirafarias0@gmail.com>
+ * Copyright (C) 2016-2017 Caio Oliveira <caiooliveirafarias0@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -29,12 +29,7 @@
 #define LM3533_DRIVER_NAME "lm3533_leds"
 
 static struct i2c_client *lm3533_client = NULL;
-static struct workqueue_struct *led_wq = NULL;
-static struct workqueue_struct *bt_connected_wq;
-static struct delayed_work BT_connected;
-static u8 lcm_has_on;
-static int keep_backlight_brightness = 255;
-static u8 backlight_has_on;
+static struct workqueue_struct *led_workqueue = NULL;
 
 u8 brightness_table[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
@@ -78,22 +73,10 @@ static struct lm3533_platform_data lm3533_leds_data = {
 		},
     }};
 
-struct rgb_brightness {
-	int light_red;
-	int light_green;
-	int light_blue;
-};
-
-/* Saved data */
 struct lm3533_led_data {
 	u8 id;
-	u8 keep_on_triggered_next;
-	u8 keep_on_triggered_now;
-	int lm3533_led_brightness;
-	unsigned long fade_time;
-	unsigned long keep_on_time;
-	unsigned long keep_off_time;
-	unsigned long lm3533_rgb_brightness;
+	int backlight_brightness;
+	unsigned long sns_brightness;
 	struct led_classdev ldev;
 	struct i2c_client *client;
 	struct delayed_work thread;
@@ -107,377 +90,112 @@ struct lm3533_data {
 	struct lm3533_led_data leds[LM3533_LEDS_MAX];
 };
 
-static int theme_color = 27903;
-
-static ssize_t lm3533_fade_time_write(struct device *dev,
-				      struct device_attribute *attr,
-				      const char *buf, size_t count)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct lm3533_led_data *led =
-	    container_of(led_cdev, struct lm3533_led_data, ldev);
-	static unsigned long fade_time;
-	u8 fade_data[6];
-
-	if (strict_strtoul(buf, 10, &fade_time)) {
-		return -EINVAL;
-	}
-
-	pr_debug("%s: %s: %lu\n", __func__, led_cdev->name, fade_time);
-
-	led->fade_time = fade_time;
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_CONTROL_ENABLE, 0x1D);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0x3F);
-	if (fade_time == 500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	}
-
-	else if (fade_time == 3500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x58;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 200) {
-		queue_delayed_work(bt_connected_wq, &BT_connected,
-				   msecs_to_jiffies(5500));
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x52;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x01;
-		fade_data[5] = 0x04;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 300) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x01;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 625) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x02;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 100) {
-		fade_data[0] = 0x4B;
-		fade_data[1] = 0x4B;
-		fade_data[2] = 0x07;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x00;
-		fade_data[5] = 0x00;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else {
-		pr_debug("%s: dimming disable: %lu\n", __func__, fade_time);
-
-		i2c_smbus_write_byte_data(
-		    lm3533_client,
-		    LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL, 0x00);
-	}
-	return count;
-}
-
-static ssize_t lm3533_runtime_fade_time_write(struct device *dev,
-					      struct device_attribute *attr,
-					      const char *buf, size_t count)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	static unsigned long runtime_fade_time;
-
-	if (strict_strtoul(buf, 10, &runtime_fade_time)) {
-		return -EINVAL;
-	}
-
-	pr_debug("%s: %s: %lu\n", __func__, led_cdev->name, runtime_fade_time);
-
-	return count;
-}
-
-static ssize_t lm3533_blink_write(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	static unsigned long blinking;
-	u8 blink_data[6];
-
-	if (strict_strtoul(buf, 10, &blinking)) {
-		return -EINVAL;
-	}
-
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_BRIGHTNESS_REGISTER_F,
-				  0xFF);
-
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_CONTROL_ENABLE, 0x21);
-	blink_data[0] = 0x62;
-	blink_data[1] = 0x62;
-	blink_data[2] = 0x07;
-	blink_data[3] = 0x00;
-	blink_data[4] = 0x00;
-	blink_data[5] = 0x00;
-
-	i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_4_DELAY, 6, blink_data);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0xC0);
-
-	return count;
-}
-
-static ssize_t lm3533_theme_write(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	static unsigned long theme;
-
-	if (strict_strtoul(buf, 10, &theme)) {
-		return -EINVAL;
-	}
-
-	theme_color = theme;
-
-	pr_debug("%s: %d\n", __func__, theme_color);
-
-	return count;
-}
-
-static ssize_t lm3533_button2_write(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
-{
-	static unsigned long button2;
-	u8 button2_data[3];
-
-	if (strict_strtoul(buf, 10, &button2)) {
-		return -EINVAL;
-	}
-
-	if (button2 == 1) {
-		pr_debug("%s: on [%d]\n", __func__, theme_color);
-		button2_data[0] = brightness_table[(theme_color >> 16) & 255];
-		button2_data[1] = brightness_table[(theme_color >> 8) & 255];
-		button2_data[2] = brightness_table[(theme_color)&255];
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_BRIGHTNESS_REGISTER_C, 3,
-					       button2_data);
-	} else {
-		pr_debug("%s: off\n", __func__);
-		button2_data[0] = brightness_table[(0x00) & 255];
-		button2_data[1] = brightness_table[(0x00) & 255];
-		button2_data[2] = brightness_table[(0x00) & 255];
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_BRIGHTNESS_REGISTER_C, 3,
-					       button2_data);
-	}
-	return count;
-}
-
-static ssize_t lm3533_rgb_brightness_write(struct device *dev,
+static ssize_t lm3533_sns_brightness_write(struct device *dev,
 					   struct device_attribute *attr,
 					   const char *buf, size_t count)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
-	u8 sns_data[3];
-	static unsigned long rgb_brightness;
+	static unsigned long sns_brightness;
+	static u8 sns_data[3];
 
-	if (strict_strtoul(buf, 10, &rgb_brightness)) {
+	if (kstrtoul(buf, 10, &sns_brightness)) {
 		return -EINVAL;
 	}
 
-	led->lm3533_rgb_brightness = rgb_brightness;
-
-	pr_debug("%s: %s: %lu\n", __func__, led_cdev->name, rgb_brightness);
+	led->sns_brightness = sns_brightness;
 
 	cancel_delayed_work_sync(&led->thread_register_keep);
 	cancel_delayed_work_sync(&led->thread_set_keep);
 
-	sns_data[0] = brightness_table[(rgb_brightness >> 16) & 255];
-	sns_data[1] = brightness_table[(rgb_brightness >> 8) & 255];
-	sns_data[2] = brightness_table[(rgb_brightness)&255];
-	i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
-	memset(sns_data, 0, 3);
-	i2c_smbus_read_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+	if (sns_brightness) {
+		sns_data[0] = brightness_table[(sns_brightness >> 16) & 255];
+		sns_data[1] = brightness_table[(sns_brightness >> 8) & 255];
+		sns_data[2] = brightness_table[(sns_brightness)&255];
+		i2c_smbus_write_i2c_block_data(
+		    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+		memset(sns_data, 0, 3);
+		i2c_smbus_read_i2c_block_data(
+		    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+	}
 
-	pr_debug("%s: sns_data[0] = %d , sns_data[1] = %d , sns_data[2] = %d\n",
-		 __func__, sns_data[0], sns_data[1], sns_data[2]);
-
-	queue_delayed_work(led_wq, &led->thread, msecs_to_jiffies(10));
+	queue_delayed_work(led_workqueue, &led->thread, msecs_to_jiffies(10));
 
 	return count;
 }
 
-static int lm3533_led_set(struct lm3533_led_data *led,
-			  unsigned long brightness);
-
-static ssize_t lm3533_charger_brightness_write(struct device *dev,
-					       struct device_attribute *attr,
-					       const char *buf, size_t count)
+static ssize_t lm3533_sns_brightness_show(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
 {
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
-	static unsigned long charger_brightness;
+	ssize_t ret = 0;
 
-	if (strict_strtoul(buf, 10, &charger_brightness)) {
-		return -EINVAL;
-	}
+	ret = snprintf(buf, PAGE_SIZE, "%s: %s: sns_brightness = [%lu]\n",
+		       __func__, led_cdev->name, led->sns_brightness);
 
-	if (led->id == 2) {
-		led->lm3533_led_brightness = charger_brightness;
-		pr_debug("%s: %s: %lu\n", __func__, led_cdev->name,
-			 charger_brightness);
-		lm3533_led_set(led, led->lm3533_led_brightness);
-	}
-
-	return count;
+	return ret;
 }
-static DEVICE_ATTR(charger_brightness, 0644, NULL,
-		   lm3533_charger_brightness_write);
 
-static DEVICE_ATTR(fade_time, 0644, NULL, lm3533_fade_time_write);
-static DEVICE_ATTR(runtime_fade_time, 0644, NULL,
-		   lm3533_runtime_fade_time_write);
-static DEVICE_ATTR(rgb_brightness, 0644, NULL, lm3533_rgb_brightness_write);
-static DEVICE_ATTR(blinking, 0644, NULL, lm3533_blink_write);
-static DEVICE_ATTR(theme, 0644, NULL, lm3533_theme_write);
-static DEVICE_ATTR(button2, 0644, NULL, lm3533_button2_write);
+static DEVICE_ATTR(rgb_brightness, 0644, lm3533_sns_brightness_show,
+		   lm3533_sns_brightness_write);
 
-static struct attribute *lm3533_attributes[] = {
-    &dev_attr_fade_time.attr,
-    &dev_attr_runtime_fade_time.attr,
-    &dev_attr_rgb_brightness.attr,
-    &dev_attr_blinking.attr,
-    &dev_attr_theme.attr,
-    &dev_attr_button2.attr,
-    NULL};
+static struct attribute *lm3533_leds_attributes[] = {
+    &dev_attr_rgb_brightness.attr, NULL};
 
-static struct attribute_group lm3533_attribute_group = {.attrs =
-							    lm3533_attributes};
-
-static struct attribute *lm3533_backlight_attributes[] = {
-    &dev_attr_fade_time.attr, &dev_attr_runtime_fade_time.attr,
-    &dev_attr_charger_brightness.attr, NULL};
-
-static struct attribute_group lm3533_backlight_attribute_group = {
-    .attrs = lm3533_backlight_attributes};
+static struct attribute_group lm3533_leds_attribute_group = {
+    .attrs = lm3533_leds_attributes};
 
 static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 {
-	u8 id = led->id;
-	static int err;
-	static int brightness_temp = 0;
-	static int rgb_enable = 0;
+	static int err = 0, sns_enable = 0;
+	static int ignore_first_event = 1;
 	static u8 BANK_ENABLE = 0x01;
 	static u8 BANK_ENABLE_ORIGINAL = 0x00;
-	static int ignoreFirstBacklightOff_event = 1;
 
-	switch (id) {
-	case LM3533_LED0:
+	switch (led->id) {
+	case LM3533_SNS:
 		BANK_ENABLE = BANK_ENABLE & 35; // 100011
 
-		rgb_enable = 100 * ((brightness >> 16) & 255 ? 1 : 0) +
+		sns_enable = 100 * ((brightness >> 16) & 255 ? 1 : 0) +
 			     10 * ((brightness >> 8) & 255 ? 1 : 0) +
 			     ((brightness)&255 ? 1 : 0);
 
 		i2c_smbus_write_byte_data(
 		    lm3533_client, LM3533_STARTUP_SHUTDOWN_RAMP_RATES, 0x1B);
 
-		switch (rgb_enable) {
+		switch (sns_enable) {
 		case SNS_NO: // 000
 			break;
-		case SNS_B:				//  100
-			BANK_ENABLE = BANK_ENABLE | 16; // 010000
+		case SNS_R:			       //  001
+			BANK_ENABLE = BANK_ENABLE | 4; // 000100
 			break;
 		case SNS_G:			       //  010
 			BANK_ENABLE = BANK_ENABLE | 8; // 001000
 			break;
-		case SNS_GB:				// 110
-			BANK_ENABLE = BANK_ENABLE | 24; // 011000
-			break;
-		case SNS_R:			       // 001
-			BANK_ENABLE = BANK_ENABLE | 4; // 000100
-			break;
-		case SNS_RB:				// 101
-			BANK_ENABLE = BANK_ENABLE | 20; // 010100
-			break;
-		case SNS_RG:				// 011
+		case SNS_RG:				//  011
 			BANK_ENABLE = BANK_ENABLE | 12; // 001100
 			break;
-		case SNS_RGB:				// 111
+		case SNS_B:				//  100
+			BANK_ENABLE = BANK_ENABLE | 16; // 010000
+			break;
+		case SNS_RB:				//  101
+			BANK_ENABLE = BANK_ENABLE | 20; // 010100
+			break;
+		case SNS_GB:				//  110
+			BANK_ENABLE = BANK_ENABLE | 24; // 011000
+			break;
+		case SNS_RGB:				//  111
 			BANK_ENABLE = BANK_ENABLE | 28; // 011100
 			break;
 		default:
 			break;
 		}
 		break;
-	case LM3533_LED1:
+	case LM3533_NOTIFICATION:
 		i2c_smbus_write_byte_data(
 		    lm3533_client, LM3533_STARTUP_SHUTDOWN_RAMP_RATES, 0x00);
 
@@ -487,41 +205,19 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 			BANK_ENABLE = BANK_ENABLE & 31; // 011111
 		}
 		break;
-	case LM3533_LED2:
-		if (led->lm3533_led_brightness) {
-			if (!brightness_temp) {
-				brightness_temp = 1;
-				pr_debug("%s: backlight on\n", __func__);
-			}
-			i2c_smbus_write_byte_data(
-			    lm3533_client, LM3533_RUN_TIME_RAMP_RATES,
-			    (led->fade_time > 0) ? 0x08 : 0);
-			(led->fade_time > 0) ? 0 : msleep(20);
-
+	case LM3533_BACKLIGHT:
+		if (led->backlight_brightness) {
 			err = i2c_smbus_write_byte_data(
 			    led->client, LM3533_BRIGHTNESS_REGISTER_A,
-			    brightness_table[led->lm3533_led_brightness]);
-			if (err) {
-				pr_err("%s: backlight set error %d\n", __func__,
-				       err);
-			}
+			    brightness_table[led->backlight_brightness]);
 		} else {
 			/* by major, ignore the first one */
-			if (ignoreFirstBacklightOff_event == 1) {
-				ignoreFirstBacklightOff_event = 0;
-				pr_debug("%s: backlight off 1st ignored\n",
-					 __func__);
+			if (ignore_first_event == 1) {
+				ignore_first_event = 0;
 				break;
 			}
-			brightness_temp = 0;
-
 			err = i2c_smbus_write_byte_data(
 			    led->client, LM3533_BRIGHTNESS_REGISTER_A, 0x00);
-			if (err) {
-				pr_err("%s: backlight off error [%d]\n",
-				       __func__, err);
-			}
-			pr_debug("%s: backlight off\n", __func__);
 		}
 		break;
 	default:
@@ -532,15 +228,8 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 		err = i2c_smbus_write_byte_data(
 		    led->client, LM3533_CONTROL_ENABLE, BANK_ENABLE);
 		msleep(5);
-		if (err) {
-			pr_err("%s: bank set error [0x%x]\n", __func__,
-			       BANK_ENABLE);
-		}
 	}
 	BANK_ENABLE_ORIGINAL = BANK_ENABLE;
-
-	pr_debug("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
-		 led->ldev.name, id, brightness);
 
 	return err;
 }
@@ -551,41 +240,22 @@ static void lm3533_led_set_brightness(struct led_classdev *led_cdev,
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
 
-	if (led->id == 2) {
-		pr_debug("%s: %s: %d\n", __func__, led_cdev->name, brightness);
-	}
+	led->backlight_brightness = brightness;
 
-	led->lm3533_led_brightness = brightness;
-
-	if (led->id == 2 && brightness == 0) {
-		keep_backlight_brightness = 0;
-		lcm_has_on = 0;
-		backlight_has_on = 0;
-		led->lm3533_led_brightness = 0;
-		lm3533_led_set(led, 0);
-	} else if (led->id == 2 && brightness > 0) {
-		if (lcm_has_on == 1 && backlight_has_on == 0 &&
-		    brightness > 0) {
-			lm3533_led_set(led, brightness);
-			backlight_has_on = 1;
-		} else if (lcm_has_on == 1 && backlight_has_on == 1 &&
-			   brightness > 0) {
+	if (led->id == LM3533_BACKLIGHT) {
+		if (brightness > 0) {
 			lm3533_led_set(led, brightness);
 		} else {
-			keep_backlight_brightness = brightness;
+			led->backlight_brightness = 0;
+			lm3533_led_set(led, 0);
 		}
-	} else if (led->id == 2) {
-		backlight_has_on = 0;
-		lcm_has_on = 0;
-		led->lm3533_led_brightness = 0;
-		lm3533_led_set(led, 0);
-		keep_backlight_brightness = 0;
-	} else if (led->id == 1) {
-		cancel_delayed_work_sync(&led->thread_register_keep);
-		cancel_delayed_work_sync(&led->thread_set_keep);
-		queue_delayed_work(led_wq, &led->thread, msecs_to_jiffies(10));
 	} else {
-		queue_delayed_work(led_wq, &led->thread, msecs_to_jiffies(10));
+		if (led->id == LM3533_NOTIFICATION) {
+			cancel_delayed_work_sync(&led->thread_register_keep);
+			cancel_delayed_work_sync(&led->thread_set_keep);
+		}
+		queue_delayed_work(led_workqueue, &led->thread,
+				   msecs_to_jiffies(10));
 	}
 }
 
@@ -594,25 +264,11 @@ static void lm3533_led_work(struct work_struct *work)
 	struct lm3533_led_data *led =
 	    container_of(work, struct lm3533_led_data, thread.work);
 
-	if (led->id == 0) {
-		lm3533_led_set(led, led->lm3533_rgb_brightness);
-	} else if (led->id == 1) {
-		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
+	if (led->id == LM3533_SNS) {
+		lm3533_led_set(led, led->sns_brightness);
+	} else if (led->id == LM3533_NOTIFICATION) {
+		lm3533_led_set(led, (unsigned long)led->backlight_brightness);
 	}
-}
-
-static void lm3533_led_btconnected_work(struct work_struct *work)
-{
-	u8 data[3];
-
-	data[0] = brightness_table[(0x00) & 255];
-	data[1] = brightness_table[(0x00) & 255];
-	data[2] = brightness_table[(0x00) & 255];
-	i2c_smbus_write_i2c_block_data(lm3533_client,
-				       LM3533_BRIGHTNESS_REGISTER_C, 3, data);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0x00);
 }
 
 void lm3533_backlight_control(unsigned long brightness)
@@ -620,9 +276,9 @@ void lm3533_backlight_control(unsigned long brightness)
 	struct lm3533_data *data = i2c_get_clientdata(lm3533_client);
 	struct lm3533_led_data *led2 = &data->leds[2];
 
-	led2->lm3533_led_brightness = brightness;
+	led2->backlight_brightness = brightness;
 
-	lm3533_led_set(led2, led2->lm3533_led_brightness);
+	lm3533_led_set(led2, led2->backlight_brightness);
 
 	return;
 }
@@ -630,7 +286,7 @@ void lm3533_backlight_control(unsigned long brightness)
 static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 			    struct lm3533_platform_data *pdata)
 {
-	int i, err = 0;
+	int i = 0, err = 0;
 
 	u8 LM3533_data[32];
 	memset(LM3533_data, 0, 32);
@@ -641,74 +297,49 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 	LM3533_data[3] = 0x00;
 	LM3533_data[4] = 0x00;
 	LM3533_data[5] = 0x00;
-	err = i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_CONTROL_BANK_A_PWM_CONFIGURATION, 6,
-	    LM3533_data);
-	if (err) {
-		pr_notice("%s: LM3533_CONTROL_BANK_A_PWM_CONFIGURATION\n",
-			  __func__);
-	}
+	i2c_smbus_write_i2c_block_data(lm3533_client,
+				       LM3533_CONTROL_BANK_A_PWM_CONFIGURATION,
+				       6, LM3533_data);
 
 	LM3533_data[0] = 0x13;
 	LM3533_data[1] = 0x13;
 	LM3533_data[2] = 0x13;
 	LM3533_data[3] = 0x13;
-
-	err = i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_CONTROL_BANK_A_FULL_SCALE_CURRENT, 4,
-	    LM3533_data);
-	if (err) {
-		pr_notice("%s: LM3533_CONTROL_BANK_A_FULL_SCALE_CURRENT\n",
-			  __func__);
-	}
+	i2c_smbus_write_i2c_block_data(lm3533_client,
+				       LM3533_CONTROL_BANK_A_FULL_SCALE_CURRENT,
+				       4, LM3533_data);
 
 	LM3533_data[0] = 0x02;
 	LM3533_data[1] = 0x0C;
 	LM3533_data[2] = 0x0C;
 	LM3533_data[3] = 0x0C;
 	LM3533_data[4] = 0x0C;
-
-	err = i2c_smbus_write_i2c_block_data(
+	i2c_smbus_write_i2c_block_data(
 	    lm3533_client, LM3533_CONTROL_BANK_A_BRIGHTNESS_CONFIGURATION, 5,
 	    LM3533_data);
-	if (err) {
-		pr_notice(
-		    "%s: LM3533_CONTROL_BANK_A_BRIGHTNESS_CONFIGURATION\n",
-		    __func__);
-	}
 
 	LM3533_data[0] = 0xAF;
 	LM3533_data[1] = 0xAF;
 	LM3533_data[2] = 0xAF;
 	LM3533_data[3] = 0xFF;
-
-	// brightness
 	i2c_smbus_write_i2c_block_data(
 	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 4, LM3533_data);
 
 	LM3533_data[0] = 0x1B;
 	LM3533_data[1] = 0x08;
-
 	i2c_smbus_write_i2c_block_data(
 	    lm3533_client, LM3533_STARTUP_SHUTDOWN_RAMP_RATES, 2, LM3533_data);
-
-	err = i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_OVP_FREQUENCY_PWM_POLARITY, 0x04);
-	if (err) {
-		pr_notice("%s: LM3533_OVP_FREQUENCY_PWM_POLARITY\n", __func__);
-	}
+	i2c_smbus_write_byte_data(lm3533_client,
+				  LM3533_OVP_FREQUENCY_PWM_POLARITY, 0x04);
 
 	memset(LM3533_data, 0, 32);
 	i2c_smbus_read_i2c_block_data(lm3533_client,
 				      LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION,
 				      32, LM3533_data);
+
 	memset(LM3533_data, 0, 32);
 	i2c_smbus_read_i2c_block_data(
 	    lm3533_client, LM3533_ALS_DOWN_DELAY_CONTROL, 32, LM3533_data);
-
-	pr_debug("%s: 0x%x\n", __func__,
-		 i2c_smbus_read_byte_data(
-		     lm3533_client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION));
 
 	for (i = 0; i < pdata->leds_size; i++) {
 		struct lm3533_led *pled = &pdata->leds[i];
@@ -720,38 +351,31 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		led->ldev.brightness_set = lm3533_led_set_brightness;
 
 		INIT_DELAYED_WORK(&led->thread, lm3533_led_work);
-		INIT_DELAYED_WORK(&BT_connected, lm3533_led_btconnected_work);
 
 		err = led_classdev_register(&client->dev, &led->ldev);
 		if (err < 0) {
-			dev_err(&client->dev, "%s: couldn't register LED %s\n",
-				__func__, led->ldev.name);
+			dev_err(&client->dev, "couldn't register LED %s\n",
+				led->ldev.name);
 			goto exit;
 		}
-		if (led->id == 2) {
-			err = sysfs_create_group(
-			    &led->ldev.dev->kobj,
-			    &lm3533_backlight_attribute_group);
-		} else {
-			err = sysfs_create_group(&led->ldev.dev->kobj,
-						 &lm3533_attribute_group);
-		}
+
+		err = sysfs_create_group(&led->ldev.dev->kobj,
+					 &lm3533_leds_attribute_group);
 		if (err < 0) {
-			pr_err("%s: create fail\n", __func__);
+			dev_err(&client->dev, "create fail\n");
 		}
 
-		led->fade_time = 255;
+		led->backlight_brightness = 0;
 
-		led->lm3533_led_brightness = 0;
-
+		err = lm3533_led_set(led, 0);
 		if (err < 0) {
-			dev_err(&client->dev, "%s: %s couldn't set STATUS\n",
-				__func__, led->ldev.name);
+			dev_err(&client->dev, "%s couldn't set STATUS\n",
+				led->ldev.name);
 			goto exit;
 		}
 	}
-	return 0;
 
+	return 0;
 exit:
 	if (i > 0) {
 		for (i = i - 1; i >= 0; i--) {
@@ -773,21 +397,14 @@ static int lm3533_probe(struct i2c_client *client,
 	struct lm3533_data *data;
 	int err;
 
-	pr_debug("%s: 0x%x\n", __func__,
-		 i2c_smbus_read_byte_data(
-		     client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION));
-
 	if (lm3533_pdata == NULL) {
-		dev_err(&client->dev, "%s: no platform data\n", __func__);
-		pr_err("%s: no platform data\n", __func__);
+		dev_err(&client->dev, "no platform data\n");
 		return -EINVAL;
 	}
 
 	/* Let's see whether this adapter can support what we need. */
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-		dev_err(&client->dev, "%s: insufficient functionality!\n",
-			__func__);
-		pr_err("%s: insufficient functionality\n", __func__);
+		dev_err(&client->dev, "insufficient functionality!\n");
 		return -ENODEV;
 	}
 
@@ -801,13 +418,6 @@ static int lm3533_probe(struct i2c_client *client,
 		msleep(10);
 		gpio_set_value(18, 1);
 		msleep(5);
-
-		if (i2c_smbus_read_byte_data(
-			client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION) !=
-		    0x92) {
-			pr_err("%s: LM3533 initial value error\n", __func__);
-			// return -ENODEV;
-		}
 	}
 
 	data = kzalloc(sizeof(struct lm3533_data), GFP_KERNEL);
@@ -815,8 +425,8 @@ static int lm3533_probe(struct i2c_client *client,
 		return -ENOMEM;
 	}
 
-	led_wq = create_singlethread_workqueue(LM3533_DRIVER_NAME);
-	bt_connected_wq = create_singlethread_workqueue("bt_connected_wq");
+	led_workqueue = create_singlethread_workqueue(LM3533_DRIVER_NAME);
+
 	data->client = client;
 	lm3533_client = client;
 	i2c_set_clientdata(client, data);
@@ -828,7 +438,8 @@ static int lm3533_probe(struct i2c_client *client,
 		kfree(data);
 	}
 
-	dev_info(&client->dev, "%s: lm3533 enabled\n", __func__);
+	dev_info(&client->dev, "lm3533 enabled\n");
+
 	return 0;
 }
 
@@ -838,7 +449,7 @@ static int lm3533_remove(struct i2c_client *client)
 	struct lm3533_data *data = i2c_get_clientdata(client);
 	int i;
 
-	destroy_workqueue(led_wq);
+	destroy_workqueue(led_workqueue);
 
 	for (i = 0; i < pdata->leds_size; i++) {
 		led_classdev_unregister(&data->leds[i].ldev);
@@ -847,15 +458,13 @@ static int lm3533_remove(struct i2c_client *client)
 		cancel_work_sync(&data->leds[i].thread_set_keep.work);
 	}
 
-	destroy_workqueue(bt_connected_wq);
-
 	kfree(data);
 
 	return 0;
 }
 
 /* lm3533 i2c driver struct */
-static const struct i2c_device_id lm3533_id[] = {{"lm3533_leds", 0}, {}};
+static const struct i2c_device_id lm3533_id[] = {{LM3533_DRIVER_NAME, 0}, {}};
 
 MODULE_DEVICE_TABLE(i2c, lm3533_id);
 
