@@ -30,8 +30,6 @@
 
 static struct i2c_client *lm3533_client = NULL;
 static struct workqueue_struct *led_wq = NULL;
-static struct workqueue_struct *bt_connected_wq;
-static struct delayed_work bt_connected;
 static u8 lcm_has_on;
 static int keep_backlight_brightness = 255;
 static u8 backlight_has_on;
@@ -115,7 +113,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
 	static unsigned long fade_time;
-	u8 fade_data[6];
 
 	if (strict_strtoul(buf, 10, &fade_time)) {
 		return -EINVAL;
@@ -124,113 +121,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	pr_debug("%s: %s: %lu\n", __func__, led_cdev->name, fade_time);
 
 	led->fade_time = fade_time;
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_CONTROL_ENABLE, 0x1D);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0x3F);
-	if (fade_time == 500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 3500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x58;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 200) {
-		queue_delayed_work(bt_connected_wq, &bt_connected,
-				   msecs_to_jiffies(5500));
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x52;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x01;
-		fade_data[5] = 0x04;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 300) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x01;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 625) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x02;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 100) {
-		fade_data[0] = 0x4B;
-		fade_data[1] = 0x4B;
-		fade_data[2] = 0x07;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x00;
-		fade_data[5] = 0x00;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else {
-		i2c_smbus_write_byte_data(
-		    lm3533_client,
-		    LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL, 0x00);
-	}
 
 	return count;
 }
@@ -458,12 +348,10 @@ static void lm3533_led_set_brightness(struct led_classdev *led_cdev,
 		led->lm3533_led_brightness = 0;
 		lm3533_led_set(led, 0);
 	} else if (led->id == 2 && brightness > 0) {
-		if (lcm_has_on == 1 && backlight_has_on == 0 &&
-		    brightness > 0) {
+		if (lcm_has_on == 1 && backlight_has_on == 0) {
 			lm3533_led_set(led, brightness);
 			backlight_has_on = 1;
-		} else if (lcm_has_on == 1 && backlight_has_on == 1 &&
-			   brightness > 0) {
+		} else if (lcm_has_on == 1 && backlight_has_on == 1) {
 			lm3533_led_set(led, brightness);
 		} else {
 			keep_backlight_brightness = brightness;
@@ -493,20 +381,6 @@ static void lm3533_led_work(struct work_struct *work)
 	} else if (led->id == 1) {
 		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
 	}
-}
-
-static void lm3533_led_bt_connected_work(struct work_struct *work)
-{
-	u8 data[3];
-
-	data[0] = brightness_table[(0x00) & 255];
-	data[1] = brightness_table[(0x00) & 255];
-	data[2] = brightness_table[(0x00) & 255];
-	i2c_smbus_write_i2c_block_data(lm3533_client,
-				       LM3533_BRIGHTNESS_REGISTER_C, 3, data);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0x00);
 }
 
 void lm3533_backlight_control(unsigned long brightness)
@@ -614,7 +488,6 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		led->ldev.brightness_set = lm3533_led_set_brightness;
 
 		INIT_DELAYED_WORK(&led->thread, lm3533_led_work);
-		INIT_DELAYED_WORK(&bt_connected, lm3533_led_bt_connected_work);
 
 		err = led_classdev_register(&client->dev, &led->ldev);
 		if (err < 0) {
@@ -639,6 +512,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 
 		led->lm3533_led_brightness = 0;
 
+		err = lm3533_led_set(led, 0);
 		if (err < 0) {
 			dev_err(&client->dev, "%s couldn't set STATUS\n",
 				led->ldev.name);
@@ -707,7 +581,6 @@ static int lm3533_probe(struct i2c_client *client,
 	}
 
 	led_wq = create_singlethread_workqueue(LM3533_DRIVER_NAME);
-	bt_connected_wq = create_singlethread_workqueue("bt_connected_wq");
 
 	data->client = client;
 	lm3533_client = client;
@@ -738,8 +611,6 @@ static int lm3533_remove(struct i2c_client *client)
 		cancel_work_sync(&data->leds[i].thread_register_keep.work);
 		cancel_work_sync(&data->leds[i].thread_set_keep.work);
 	}
-
-	destroy_workqueue(bt_connected_wq);
 
 	kfree(data);
 
