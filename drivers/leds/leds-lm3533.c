@@ -82,7 +82,6 @@ struct rgb_brightness {
 	int light_blue;
 };
 
-/* Saved data */
 struct lm3533_led_data {
 	u8 id;
 	u8 keep_on_triggered_next;
@@ -121,17 +120,16 @@ static ssize_t lm3533_keep_on_time_write(struct device *dev,
 	led->keep_on_time = keep_time_data / 65536;
 	led->keep_off_time = keep_time_data % 65536;
 
-	pr_debug("%s: keep_on_time: %lu, keep_off_time: %lu\n", led_cdev->name,
-		 led->keep_on_time, led->keep_off_time);
+	pr_info("%s: keep_on_time: %lu, keep_off_time: %lu\n", led_cdev->name,
+		led->keep_on_time, led->keep_off_time);
 
 	led->keep_on_triggered_next = ACTION_START;
 	if (led->keep_on_time) {
 		queue_delayed_work(led_wq, &led->thread_register_keep,
 				   msecs_to_jiffies(10));
 	} else {
-		dev_err(&client->dev,
-			"wrong value of setting keep_on_time (%lu) \n",
-			led->keep_on_time);
+		pr_err("%s: wrong value of setting keep_on_time (%lu)\n",
+		       __func__, led->keep_on_time);
 	}
 
 	return count;
@@ -389,7 +387,7 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	BANK_ENABLE_ORIGINAL = BANK_ENABLE;
 
 	pr_info("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
-		 led->ldev.name, id, brightness);
+		led->ldev.name, id, brightness);
 
 	return err;
 }
@@ -445,6 +443,61 @@ static void lm3533_led_work(struct work_struct *work)
 		lm3533_led_set(led, led->lm3533_rgb_brightness);
 	} else if (led->id == LM3533_NOTIFICATION) {
 		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
+	}
+}
+
+static void lm3533_led_register_keep_light_work(struct work_struct *work)
+{
+	struct lm3533_led_data *led = container_of(work, struct lm3533_led_data,
+						   thread_register_keep.work);
+
+	pr_info("%s: %s (%lu)\n", __func__, led->ldev.name, led->keep_on_time);
+	pr_info("%s: keep_on_triggered_next = [%d]\n", __func__,
+		led->keep_on_triggered_next);
+
+	if (led->keep_on_triggered_next == ACTION_START) {
+		queue_delayed_work(led_wq, &led->thread_set_keep,
+				   msecs_to_jiffies(led->keep_on_time + 1000));
+		led->keep_on_triggered_now = ACTION_START;
+		led->keep_on_triggered_next = ACTION_OFF;
+	} else if (led->keep_on_triggered_next == ACTION_OFF) {
+		queue_delayed_work(led_wq, &led->thread_set_keep,
+				   msecs_to_jiffies(led->keep_off_time + 1000));
+		led->keep_on_triggered_now = ACTION_OFF;
+		led->keep_on_triggered_next = ACTION_ON;
+	} else if (led->keep_on_triggered_next == ACTION_ON) {
+		queue_delayed_work(led_wq, &led->thread_set_keep,
+				   msecs_to_jiffies(led->keep_on_time + 1000));
+		led->keep_on_triggered_now = ACTION_ON;
+		led->keep_on_triggered_next = ACTION_OFF;
+	}
+}
+
+static void lm3533_led_keep_light_work(struct work_struct *work)
+{
+	struct lm3533_led_data *led =
+	    container_of(work, struct lm3533_led_data, thread_set_keep.work);
+
+	pr_info("%s: %s (%d)\n", __func__, led->ldev.name,
+		led->keep_on_triggered_next);
+
+	if (led->keep_on_triggered_next == ACTION_OFF) {
+		lm3533_led_set(led, 0);
+		if (led->keep_off_time != 0)
+			queue_delayed_work(led_wq, &led->thread_register_keep,
+					   msecs_to_jiffies(10));
+	} else {
+		if (led->id == LM3533_NOTIFICATION) {
+			pr_info(
+			    "%s: button led->lm3533_led_brightness = [%d]\n",
+			    __func__, led->lm3533_led_brightness);
+			lm3533_led_set(led, led->lm3533_led_brightness);
+		} else
+			lm3533_led_set(led, led->lm3533_rgb_brightness);
+
+		if (led->keep_on_time != 0)
+			queue_delayed_work(led_wq, &led->thread_register_keep,
+					   msecs_to_jiffies(10));
 	}
 }
 
@@ -553,6 +606,10 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		led->ldev.brightness_set = lm3533_led_set_brightness;
 
 		INIT_DELAYED_WORK(&led->thread, lm3533_led_work);
+		INIT_DELAYED_WORK(&led->thread_register_keep,
+				  lm3533_led_register_keep_light_work);
+		INIT_DELAYED_WORK(&led->thread_set_keep,
+				  lm3533_led_keep_light_work);
 
 		err = led_classdev_register(&client->dev, &led->ldev);
 		if (err < 0) {

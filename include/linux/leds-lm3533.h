@@ -23,7 +23,6 @@
 #define LM3533_BACKLIGHT 2
 #define LM3533_LEDS_MAX 3
 
-#define LM3533_DISABLED 0x00
 #define LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION 0x10
 #define LM3533_STARTUP_SHUTDOWN_RAMP_RATES 0x12
 #define LM3533_RUN_TIME_RAMP_RATES 0x13
@@ -42,10 +41,6 @@
 #define LM3533_PATTERN_GENERATOR_3_DELAY 0x90
 #define LM3533_PATTERN_GENERATOR_4_DELAY 0xA0
 
-struct lm3533_led {
-	const char *name;
-};
-
 enum lm3533_rgb_brightness {
 	SNS_NO = 0,
 	SNS_B = 1,
@@ -55,6 +50,16 @@ enum lm3533_rgb_brightness {
 	SNS_RB = 101,
 	SNS_RG = 110,
 	SNS_RGB = 111,
+};
+
+enum keep_on_time_status {
+	ACTION_START = 0,
+	ACTION_ON,
+	ACTION_OFF,
+};
+
+struct lm3533_led {
+	const char *name;
 };
 
 struct lm3533_platform_data {
