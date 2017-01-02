@@ -200,7 +200,7 @@ static ssize_t lm3533_charger_brightness_write(struct device *dev,
 		return -EINVAL;
 	}
 
-	if (led->id == 2) {
+	if (led->id == LM3533_BACKLIGHT) {
 		led->lm3533_led_brightness = charger_brightness;
 		pr_debug("%s: %s: %lu\n", __func__, led_cdev->name,
 			 charger_brightness);
@@ -237,7 +237,7 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	static int ignoreFirstBacklightOff_event = 1;
 
 	switch (id) {
-	case LM3533_LED0:
+	case LM3533_SNS:
 		BANK_ENABLE = BANK_ENABLE & 35; // 100011
 
 		rgb_enable = 100 * ((brightness >> 16) & 255 ? 1 : 0) +
@@ -275,7 +275,7 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 			break;
 		}
 		break;
-	case LM3533_LED1:
+	case LM3533_NOTIFICATION:
 		i2c_smbus_write_byte_data(
 		    lm3533_client, LM3533_STARTUP_SHUTDOWN_RAMP_RATES, 0x00);
 
@@ -285,7 +285,7 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 			BANK_ENABLE = BANK_ENABLE & 31; // 011111
 		}
 		break;
-	case LM3533_LED2:
+	case LM3533_BACKLIGHT:
 		if (led->lm3533_led_brightness) {
 			if (!brightness_temp) {
 				brightness_temp = 1;
@@ -323,7 +323,7 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	}
 	BANK_ENABLE_ORIGINAL = BANK_ENABLE;
 
-	pr_debug("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
+	pr_info("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
 		 led->ldev.name, id, brightness);
 
 	return err;
@@ -335,19 +335,19 @@ static void lm3533_led_set_brightness(struct led_classdev *led_cdev,
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
 
-	if (led->id == 2) {
+	if (led->id == LM3533_BACKLIGHT) {
 		pr_debug("%s: %s: %d\n", __func__, led_cdev->name, brightness);
 	}
 
 	led->lm3533_led_brightness = brightness;
 
-	if (led->id == 2 && brightness == 0) {
+	if (led->id == LM3533_BACKLIGHT && brightness == 0) {
 		keep_backlight_brightness = 0;
 		lcm_has_on = 0;
 		backlight_has_on = 0;
 		led->lm3533_led_brightness = 0;
 		lm3533_led_set(led, 0);
-	} else if (led->id == 2 && brightness > 0) {
+	} else if (led->id == LM3533_BACKLIGHT && brightness > 0) {
 		if (lcm_has_on == 1 && backlight_has_on == 0) {
 			lm3533_led_set(led, brightness);
 			backlight_has_on = 1;
@@ -356,13 +356,13 @@ static void lm3533_led_set_brightness(struct led_classdev *led_cdev,
 		} else {
 			keep_backlight_brightness = brightness;
 		}
-	} else if (led->id == 2) {
+	} else if (led->id == LM3533_BACKLIGHT) {
 		backlight_has_on = 0;
 		lcm_has_on = 0;
 		led->lm3533_led_brightness = 0;
 		lm3533_led_set(led, 0);
 		keep_backlight_brightness = 0;
-	} else if (led->id == 1) {
+	} else if (led->id == LM3533_NOTIFICATION) {
 		cancel_delayed_work_sync(&led->thread_register_keep);
 		cancel_delayed_work_sync(&led->thread_set_keep);
 		queue_delayed_work(led_wq, &led->thread, msecs_to_jiffies(10));
@@ -376,9 +376,9 @@ static void lm3533_led_work(struct work_struct *work)
 	struct lm3533_led_data *led =
 	    container_of(work, struct lm3533_led_data, thread.work);
 
-	if (led->id == 0) {
+	if (led->id == LM3533_SNS) {
 		lm3533_led_set(led, led->lm3533_rgb_brightness);
-	} else if (led->id == 1) {
+	} else if (led->id == LM3533_NOTIFICATION) {
 		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
 	}
 }
@@ -442,7 +442,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 	    LM3533_data);
 	if (err) {
 		dev_err(&client->dev, "LM3533_CONTROL_BANK_A_BRIGHTNESS_"
-			  "CONFIGURATION\n");
+				      "CONFIGURATION\n");
 	}
 
 	LM3533_data[0] = 0xAF;
@@ -496,7 +496,7 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 			goto exit;
 		}
 
-		if (led->id == 2) {
+		if (led->id == LM3533_BACKLIGHT) {
 			err = sysfs_create_group(
 			    &led->ldev.dev->kobj,
 			    &lm3533_backlight_attribute_group);
