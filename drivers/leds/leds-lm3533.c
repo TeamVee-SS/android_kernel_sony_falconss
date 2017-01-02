@@ -2,7 +2,7 @@
  * leds-lm3533.c - driver for National Semiconductor LM3533 LEDdriver chip
  *
  * Copyright (C) 2009 Antonio Ospite <ospite@studenti.unina.it>
- * Copyright (C) 2016 Caio Oliveira <caiooliveirafarias0@gmail.com>
+ * Copyright (C) 2016-2017 Caio Oliveira <caiooliveirafarias0@gmail.com>
  *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
@@ -105,6 +105,39 @@ struct lm3533_data {
 	struct lm3533_led_data leds[LM3533_LEDS_MAX];
 };
 
+static ssize_t lm3533_keep_on_time_write(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf, size_t count)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct lm3533_led_data *led =
+	    container_of(led_cdev, struct lm3533_led_data, ldev);
+	static unsigned long keep_time_data;
+
+	if (strict_strtoul(buf, 10, &keep_time_data)) {
+		return -EINVAL;
+	}
+
+	led->keep_on_time = keep_time_data / 65536;
+	led->keep_off_time = keep_time_data % 65536;
+
+	pr_debug("%s: keep_on_time: %lu, keep_off_time: %lu\n", led_cdev->name,
+		 led->keep_on_time, led->keep_off_time);
+
+	led->keep_on_triggered_next = ACTION_START;
+	if (led->keep_on_time) {
+		queue_delayed_work(led_wq, &led->thread_register_keep,
+				   msecs_to_jiffies(10));
+	} else {
+		dev_err(&client->dev,
+			"wrong value of setting keep_on_time (%lu) \n",
+			led->keep_on_time);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(keep_on_time, 0644, NULL, lm3533_keep_on_time_write);
+
 static ssize_t lm3533_fade_time_write(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
@@ -158,25 +191,57 @@ static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 		return -EINVAL;
 	}
 
-	led->lm3533_rgb_brightness = rgb_brightness;
+	if (rgb_brightness == 10066329) {
+		// change silk theme display
+		rgb_brightness = 14352383;
+		led->lm3533_rgb_brightness = 14352383;
+	} else if (rgb_brightness == 26184) {
+		// change turquoise theme display
+		rgb_brightness = 8388590;
+		led->lm3533_rgb_brightness = 8388590;
+	} else if (rgb_brightness == 3264280) {
+		// change emerald theme display
+		rgb_brightness = 3342130;
+		led->lm3533_rgb_brightness = 3342130;
+	} else if (rgb_brightness == 3355647) {
+		// change sapphire theme display
+		rgb_brightness = 6535423;
+		led->lm3533_rgb_brightness = 6535423;
+	} else if (rgb_brightness == 16758297) {
+		// change gold theme display
+		rgb_brightness = 15793934;
+		led->lm3533_rgb_brightness = 15793934;
+	} else if (rgb_brightness == 13369446) {
+		// change ruby theme display
+		rgb_brightness = 16738740;
+		led->lm3533_rgb_brightness = 16738740;
+	} else if (rgb_brightness == 10027263) {
+		// change amethyst theme display
+		rgb_brightness = 11149550;
+		led->lm3533_rgb_brightness = 11149550;
+	} else {
+		led->lm3533_rgb_brightness = rgb_brightness;
+	}
 
 	pr_debug("%s: %s: %lu\n", __func__, led_cdev->name, rgb_brightness);
 
 	cancel_delayed_work_sync(&led->thread_register_keep);
 	cancel_delayed_work_sync(&led->thread_set_keep);
 
-	sns_data[0] = brightness_table[(rgb_brightness >> 16) & 255];
-	sns_data[1] = brightness_table[(rgb_brightness >> 8) & 255];
-	sns_data[2] = brightness_table[(rgb_brightness)&255];
-	i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
-	memset(sns_data, 0, 3);
-	i2c_smbus_read_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+	if (rgb_brightness) {
+		sns_data[0] = brightness_table[(rgb_brightness >> 16) & 255];
+		sns_data[1] = brightness_table[(rgb_brightness >> 8) & 255];
+		sns_data[2] = brightness_table[(rgb_brightness)&255];
+		i2c_smbus_write_i2c_block_data(
+		    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+		memset(sns_data, 0, 3);
+		i2c_smbus_read_i2c_block_data(
+		    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
 
-	pr_debug("%s: sns_data[0] = %d , sns_data[1] = %d , "
-		 "sns_data[2] = %d\n",
-		 __func__, sns_data[0], sns_data[1], sns_data[2]);
+		pr_debug("%s: sns_data[0] = %d , sns_data[1] = %d , "
+			 "sns_data[2] = %d\n",
+			 __func__, sns_data[0], sns_data[1], sns_data[2]);
+	}
 
 	queue_delayed_work(led_wq, &led->thread, msecs_to_jiffies(10));
 
@@ -213,8 +278,8 @@ static DEVICE_ATTR(charger_brightness, 0644, NULL,
 		   lm3533_charger_brightness_write);
 
 static struct attribute *lm3533_attributes[] = {
-    &dev_attr_fade_time.attr, &dev_attr_rgb_brightness.attr,
-    &dev_attr_runtime_fade_time.attr, NULL};
+    &dev_attr_fade_time.attr, &dev_attr_keep_on_time.attr,
+    &dev_attr_rgb_brightness.attr, &dev_attr_runtime_fade_time.attr, NULL};
 
 static struct attribute_group lm3533_attribute_group = {.attrs =
 							    lm3533_attributes};
