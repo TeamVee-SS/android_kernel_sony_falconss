@@ -386,9 +386,6 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	}
 	BANK_ENABLE_ORIGINAL = BANK_ENABLE;
 
-	pr_info("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
-		led->ldev.name, id, brightness);
-
 	return err;
 }
 
