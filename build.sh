@@ -16,7 +16,7 @@ clear
 # Devices available
 #
 # Xperia E1
-device_variants_1="D2004 D2005 D2104 D2105 D2114" device_defconfig_1="cyanogenmod_falconss_defconfig" device_name_1="Sony-XperiaE1"
+device_variants_1="D2004 D2005 D2104 D2105 D2114" device_defconfig_1="lineageos_falconss_defconfig" device_name_1="Sony-XperiaE1"
 # Menu
 echo "${x} | ${color_green}Device choice${color_stock}"
 echo
@@ -251,7 +251,7 @@ then
 	# Main Variables
 	custom_kernel=SSProj-CAFKernel
 	builder=TeamVee-SS
-	custom_kernel_branch=KK
+	custom_kernel_branch=LP
 	ARCH=arm
 
 	while true
