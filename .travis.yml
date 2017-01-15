@@ -2,5 +2,65 @@ sudo: false
 language: c
 cache: ccache
 script:
-- git clone -b "google_gcc" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
-- source build.sh <<< "121314q"
+#
+# Travis CI Script by Caio Oliveira aka Caio99BR <caiooliveirafarias0@gmail.com>
+#
+
+#
+# Toolchain Choice
+# This will clone TeamVee Prebuilt Toolchains in directory described in build.sh
+#
+# Branchs available is:
+# Google Branch is "google_gcc" | (1) 4.7 / (2) 4.8
+# Linaro Branch is "linaro_gcc" | (1) 4.8.4 / (2) 4.9.4
+
+# Toolchain branch select here is Google 4.7
+- export ntoolchainbranch="google_gcc"
+- git clone -b "${ntoolchainbranch}" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
+
+# ${ntoolchainchoice} is your Toolchain Choice
+- export ntoolchainchoice="1"
+
+# ${ntoolchain}
+# "4" is "Toolchain Choice"
+- ntoolchain="4${ntoolchainchoice}"
+
+# ${ndevice}
+# "2" is "Clean Kernel"
+# "3" is "Device Choice"
+- ndevice="23"
+
+# ${ndevicechoice} is "Number of Choice under Device Choice"
+# - export ndevicechoice="#"
+
+# ${nbuild}
+# "6" is "Build Kernel"
+# "7" is "Zip the kernel and Modules"
+# "q" is to Exit of Script
+- nbuild="67q"
+
+# Main variables
+# Call of 'build.sh'
+# - source build.sh <<< "${ndevice}${ndevicechoice}${ntoolchain}${nbuild}"
+
+# Export of zipfile to deploy
+# - export zipfile#="${zipfile}"
+
+# Sony Xperia E1 (Single/Dual/DTV) | D2004 D2005 D2104 D2015 D2114
+- export ndevicechoice="1"
+
+# TravisCI Custom Patches
+- patch -p1 < zip-creator/travis-ci/0001-TravisCI-Custom-Patches.patch
+
+# Build!
+- source build.sh <<< "${ndevice}${ndevicechoice}${ntoolchain}${nbuild}"
+
+deploy:
+  provider: releases
+  skip_cleanup: true
+  api_key:
+    secure: "ZsAyRmlV017OeQFfPSfHwhmUwl8QUrW+HckEg9HcQ86U0zDzschexfJM6cxsgf/GTgxCa8Cgqngva6hMHTfZ5g9ptVCaUJ6lvt3FGV8pZmukssjCrC0aLph5oHlZ2iw13kleFVWLuYYPCj8riSeEVb4ePwnPpTuFDCoISc3oUwJWmb2MTKumSN/QLdQ3LS4MmFo5n597I+tmhTPotHdqufcGzamE9OtoeDiBdhNvI74A9YFbsXpi3HDB4BgMQI3eErnT1IITZ0uKpzfp5RptH41DVEPUZ9kRh1C/d7h70FMZsBxGTMOKstagNGDXfbL43fFasF18GjZfLr/qqD68q8A0DyUtkPJyeooOd/ZHa52GsPTz9w54G3hAwMCY4UFhGjmioeZTrmoJkuYxlznVEM6BQn87AB71gd+fgIoKouWSq7YcN5cRH0vdtKeV5FuVzo3vHitWuJp+kGmeIwY9SRYjL+6FoI/WHleGJL+t0H8ImT0Nlgee5DU7Aibo/CSmWrq0WskWMy6KLBZKDcMKlw1z5MLItP2sNevPce38lSP5rgKEoDpMC1IGz8n51hhIGYCycjNLghKdnOSbckB62hq4ab8Hjsumg/5Joy7I1kDOnObekIKb5QcAgSkejKNWVf6f+Z7bxUqlEI19jvxGPt/N2nqiN8wOYKpytl/LiUM="
+  file:
+    - "zip-creator/${zipfile}"
+  on:
+    tags: true

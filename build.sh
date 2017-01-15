@@ -3,6 +3,7 @@
 # Menu by Caio99BR <caiooliveirafarias0@gmail.com>
 # Colors by aidasaidas75 <aidaslukosius75@yahoo.com>
 # Toolchains by skyinfo <sh.skyinfo@gmail.com>
+# Rashed for the base of zip making
 # And the internet for filling in else where
 
 # Note!
@@ -15,7 +16,7 @@ clear
 # Devices available
 #
 # Xperia E1
-device_variants_1="D2004 D2005 D2104 D2015 D2114" device_defconfig_1="cyanogenmod_falconss_defconfig" device_name_1="Sony-XperiaE1"
+device_variants_1="D2004 D2005 D2104 D2105 D2114" device_defconfig_1="cyanogenmod_falconss_defconfig" device_name_1="Sony-XperiaE1"
 # Menu
 echo "${x} | ${color_green}Device choice${color_stock}"
 echo
@@ -31,7 +32,7 @@ case "${x}" in
 		if [ -f .config ]
 		then
 			echo "${x} | Working on ${device_name} defconfig!"
-			make -j${build_cpu_usage} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" savedefconfig
+			make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" savedefconfig
 			mv defconfig arch/${ARCH}/configs/${device_defconfig}
 		fi;;
 	b)
@@ -43,7 +44,7 @@ esac
 if ! [ "${device_defconfig}" == "" ]
 then
 	echo "${x} | Working on ${device_name} defconfig!"
-	make -j${build_cpu_usage} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" ${device_defconfig}
+	make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" ${device_defconfig}
 	sleep 2
 fi
 }
@@ -115,7 +116,7 @@ else
 	echo "  | ${color_blue}Using ${build_cpu_usage} jobs at once${color_stock}"
 
 	start_build_time=$(date +"%s")
-	make -j${build_cpu_usage} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}"
+	make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}"
 	if ! [ "$?" == "0" ]
 	then
 		echo "  | ${color_red}Build Failed! Exiting...${color_stock}"
@@ -127,27 +128,105 @@ else
 fi
 }
 
+# Zip Packer Process
+zip_packer() {
+if ! [ "${device_defconfig}" == "" ]
+then
+	if [ -f arch/${ARCH}/boot/zImage ]
+	then
+		echo "${x} | Ziping ${builder} ${custom_kernel} ${custom_kernel_branch}"
+
+		# Make base of zip
+		zip_out="/tmp/zip-creator_out"
+		rm -rf ${zip_out}/
+		mkdir -p ${zip_out}/META-INF/com/google/android/
+
+		# Copy core files
+		cp ${original_dir}/zip-creator/base/update-binary ${zip_out}/META-INF/com/google/android/
+		cp ${original_dir}/zip-creator/base/mkbootimg ${zip_out}/
+		cp ${original_dir}/zip-creator/base/unpackbootimg ${zip_out}/
+		cp ${original_dir}/arch/${ARCH}/boot/zImage ${zip_out}/
+		cp ${original_dir}/zip-creator/base/dt.img ${zip_out}/
+
+		# Set device
+		echo "${builder}" >> ${zip_out}/device.prop
+		echo "${custom_kernel} ${custom_kernel_branch}" >> ${zip_out}/device.prop
+		echo "${device_name}" >> ${zip_out}/device.prop
+		echo "Release ${release}" >> ${zip_out}/device.prop
+		echo "${custom_kernel_branch}" >> ${zip_out}/device.prop
+
+		# Stock edition
+		if [ "${custom_kernel_branch}" == "KK-Stock" ]
+		then
+			# Stock need new firmware files
+			mkdir -p ${zip_out}/wifi/
+			cp ${original_dir}/drivers/staging/prima/firmware_bin/WCNSS_cfg.dat ${zip_out}/wifi/
+			cp ${original_dir}/drivers/staging/prima/firmware_bin/WCNSS_qcom_cfg.ini ${zip_out}/wifi/
+
+			# We need modules
+			mkdir -p ${zip_out}/modules/
+			find . -name *.ko | xargs cp -a --target-directory=${zip_out}/modules/ &> /dev/null
+			${CROSS_COMPILE}strip --strip-unneeded ${zip_out}/modules/*.ko
+		fi
+
+		# Pack zip
+		cd ${zip_out}/
+		zip -r ${zipfile} * -x .gitignore &> /dev/null
+		cd ${original_dir}/
+
+		# Copy the zip created
+		cp ${zip_out}/${zipfile} ${original_dir}/zip-creator/
+		rm -rf ${zip_out}/
+	else
+		wrong_choice
+	fi
+else
+	wrong_choice
+fi
+}
+
 # Updater of defconfigs
 defconfig_updater() {
 if [ -f .config ]
 then
 	if [[ "${device_defconfig}" == "${1}" || "${device_name}" == "${1}" ]]
 	then
-		if [ $(cat arch/${ARCH}/configs/${device_defconfig} | grep "Automatically" | wc -l) == "0" ]
-		then
-			defconfig_format="a | Default Linux Kernel format  | Small"
-		else
-			defconfig_format="b | Usual copy of .config format | Complete"
-		fi
-		echo "  | Update defconfig from:"
-		echo "${defconfig_format}"
-		echo
-		echo "  | to:"
+		echo "  | Update defconfig to:"
 		echo "a | Default Linux Kernel format  | Small"
 		echo "b | Usual copy of .config format | Complete"
 		echo
 	fi
 fi
+}
+
+# Copy zip's via ADB
+zip_copy_adb() {
+if [ -f zip-creator/${zipfile} ]
+then
+	echo "${x} | Coping ${builder} ${custom_kernel} ${custom_kernel_branch}"
+	echo
+	adb shell rm -rf /data/media/0/${zipfile} &> /dev/null
+	adb push zip-creator/${zipfile} /data/media/0/${zipfile} &> /dev/null
+	if ! [ "$?" == "0" ]
+	then
+		echo "  | Copy failed!"
+		if [ ! "$(which adb)" ]
+		then
+			echo "  | ADB not installed!"
+		else
+			echo "  | Check connection!"
+		fi
+		sleep 2
+	fi
+else
+	wrong_choice
+fi
+}
+
+# Update DT Image to Live Ramdisk
+update_dt() {
+	chmod a+x ${original_dir}/zip-creator/base/dtbToolCM
+	${original_dir}/zip-creator/base/dtbToolCM -2 -s 2048 -p ${original_dir}/scripts/dtc/ ${original_dir}/arch/${ARCH}/boot/ -o ${original_dir}/zip-creator/base/dt.img
 }
 
 # Wrong choice
@@ -160,6 +239,8 @@ then
 	echo "  | Please do not use ${0} to run this script, just use '. build.sh'"
 elif [ -e build.sh ]
 then
+	# Set ${original_dir}
+	original_dir=$(pwd)
 	# Stock Color
 	color_stock=$(tput sgr0)
 	# Bold Colors
@@ -175,6 +256,14 @@ then
 
 	while true
 	do
+		# Kernel OutPut
+		if [ "${kernel_build_output}" == "(OFF)" ]
+		then
+			kernel_build_output_enable=" -s"
+		else
+			kernel_build_output="(${color_green}ON${color_stock})"
+			unset kernel_build_output_enable
+		fi
 		# Build Time
 		if ! [ "${build_time}" == "" ]
 		then
@@ -197,30 +286,53 @@ then
 			echo "0" > .version
 		fi
 		build=$(cat .version)
+		export zipfile="${custom_kernel}-${custom_kernel_branch}-${device_name}-${release}-${build}.zip"
+		# Check ZIP
+		if [ -f zip-creator/${zipfile} ]
+		then
+			menu_zipfile="(${color_green}zip-creator/${zipfile}${color_stock})"
+		else
+			unset menu_zipfile
+		fi
 		# Menu
 		clear
 		echo "  | Simple Linux Kernel ${kernel_base} Build Script ($(date +%d"/"%m"/"%Y))"
 		echo "  | ${builder} ${custom_kernel} ${custom_kernel_branch} Release $(date +%d"/"%m"/"%Y) Build #${build}"
 		echo
 		echo "  | ${color_red}Clean Menu${color_stock}"
-		echo "1 | Clean Kernel"
+		echo "1 | Clean Zip Folder"
+		echo "2 | Clean Kernel"
 		echo "  | ${color_green}Choice Menu${color_stock}"
-		echo "2 | Set Device Defconfig ${color_green}${device_name}${color_stock}"
-		echo "3 | Set Toolchain        ${color_green}${ToolchainCompile}${color_stock}"
+		echo "3 | Set Device Defconfig ${color_green}${device_name}${color_stock}"
+		echo "4 | Set Toolchain        ${color_green}${ToolchainCompile}${color_stock}"
+		echo "5 | Toggle Build Output  ${kernel_build_output}"
 		echo "  | ${color_yellow}Build Menu${color_stock}"
-		echo "4 | Build Kernel         ${menu_build_time}"
+		echo "6 | Build Kernel         ${menu_build_time}"
+		echo "7 | Build Zip Package    ${menu_zipfile}"
+		echo "8 | Copy Zip to '/data/media/0' of Device"
 		echo "e | Exit"
 		echo
 		read -n 1 -p "  | Choice | " -s x
 		case ${x} in
-			1)
+			1) rm -rf zip-creator/*.zip;;
+			2)
 				echo "${x} | Cleaning Kernel"
-				make -j${build_cpu_usage} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" clean mrproper
+				make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" clean mrproper
 				unset device_name device_defconfig build_time;;
-			2) device_choice;;
-			3) toolchain_choice;;
-			4) kernel_build;;
+			3) device_choice;;
+			4) toolchain_choice;;
+			5)
+				if [ "${kernel_build_output}" == "(OFF)" ]
+				then
+					unset kernel_build_output
+				else
+					kernel_build_output="(OFF)"
+				fi;;
+			6) kernel_build;;
+			7) zip_packer;;
+			8) zip_copy_adb;;
 			q|e) echo "${x} | Ok, Bye!"; break;;
+			u) update_dt;;
 			*) wrong_choice;;
 		esac
 	done
