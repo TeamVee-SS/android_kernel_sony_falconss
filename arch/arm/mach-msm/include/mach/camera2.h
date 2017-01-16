@@ -84,13 +84,7 @@ struct msm_camera_sensor_board_info {
 	struct msm_camera_csi_lane_params *csi_lane_params;
 	struct msm_camera_sensor_strobe_flash_data *strobe_flash_data;
 	struct msm_actuator_info *actuator_info;
-#ifdef CONFIG_S5K5CA
-	struct msm_camera_i2c_conf *i2c_conf;
-#endif
 	struct msm_sensor_info_t *sensor_info;
-#ifdef CONFIG_S5K5CA
-	struct msm_sensor_init_params *sensor_init_params;
-#endif
 	const char *misc_regulator;
 	struct msm_camera_power_ctrl_t power_info;
 	struct msm_camera_sensor_slave_info *cam_slave_info;

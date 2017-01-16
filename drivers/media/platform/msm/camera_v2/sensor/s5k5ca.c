@@ -573,26 +573,6 @@ static void __exit s5k5ca_exit_module(void)
 		i2c_del_driver(&s5k5ca_i2c_driver);
 	return;
 }
-static int32_t
-s5k5ca_sensor_enable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
-{
-	struct v4l2_subdev *i2c_mux_sd =
-	    dev_get_drvdata(&i2c_conf->mux_dev->dev);
-	v4l2_subdev_call(i2c_mux_sd, core, ioctl, VIDIOC_MSM_I2C_MUX_INIT,
-			 NULL);
-	v4l2_subdev_call(i2c_mux_sd, core, ioctl, VIDIOC_MSM_I2C_MUX_CFG,
-			 (void *)&i2c_conf->i2c_mux_mode);
-	return 0;
-}
-static int32_t
-s5k5ca_sensor_disable_i2c_mux(struct msm_camera_i2c_conf *i2c_conf)
-{
-	struct v4l2_subdev *i2c_mux_sd =
-	    dev_get_drvdata(&i2c_conf->mux_dev->dev);
-	v4l2_subdev_call(i2c_mux_sd, core, ioctl, VIDIOC_MSM_I2C_MUX_RELEASE,
-			 NULL);
-	return 0;
-}
 int32_t s5k5ca_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 {
 	int32_t rc = 0, index = 0; // i=0,
@@ -652,11 +632,7 @@ int32_t s5k5ca_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	usleep(10000);
 	// RST enable
 	gpio_direction_output(gpio_req[3].gpio, 1);
-
 	usleep(10000);
-	// iic
-	if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
-		s5k5ca_sensor_enable_i2c_mux(data->i2c_conf);
 
 	// read camera sensor id
 	if (s_ctrl->func_tbl->sensor_match_id)
@@ -668,9 +644,7 @@ int32_t s5k5ca_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 	}
 
 	HW_VERSION_GPIO = gpio_req[5].gpio;
-
 	HW_VERSION = gpio_get_value(HW_VERSION_GPIO);
-	data->sensor_init_params->HW_VERSION = HW_VERSION;
 	pr_info("%s: HW_VERSION_GPIO = [%d], HW_VERSION = [%d]\n", __func__,
 		HW_VERSION_GPIO, HW_VERSION);
 
@@ -704,9 +678,6 @@ int32_t s5k5ca_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	msm_cam_clk_enable(power_info->dev, &power_info->clk_info[0],
 			   (struct clk **)&power_setting->data[0],
 			   power_info->clk_info_size, 0);
-
-	if (data->i2c_conf && data->i2c_conf->use_i2c_mux)
-		s5k5ca_sensor_disable_i2c_mux(data->i2c_conf);
 
 	rc = msm_camera_request_gpio_table(gpio_conf->cam_gpio_req_tbl,
 					   gpio_conf->cam_gpio_req_tbl_size, 0);
