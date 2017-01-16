@@ -31,69 +31,28 @@
 	};
 
 	i2c@f9925000 {
-		mpu3050@68 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			reg = <0x68>;
-			compatible = "invn,mpu3050";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <84 0x2>;
-			vlogic-supply = <&pm8110_l14>;
-			vdd-supply = <&pm8110_l19>;
-			invn,gpio-int = <&msmgpio 84 0x2>;
-			invn,gpio-en = <&pm8110_gpios 2 0x2>;
-			invn,poll-interval = <200>;
+		bma250e@18 {
+			compatible = "accelerometer,bma250e";
+			reg = <0x18>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-
-		bmp180@77 {
-			reg = <0x77>;
-			compatible = "bosch,bmp18x";
-			vdd-supply = <&pm8110_l19>;
-			vddio-supply = <&pm8110_l14>;
-			bosch,chip-id = <0x55>;
-			bosch,oversample = <3>;
-			bosch,period = <1000>;
+		epl6881@49 {
+			compatible = "proximity,epl6811";
+			reg = <0x49>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-
-		mma8x5x@1d {
-			reg = <0x1d>;
-			compatible = "fsl,mma8x5x";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <81 0x2>;
-			vdd-supply = <&pm8110_l19>;
-			vio-supply = <&pm8110_l14>;
-			fsl,irq-gpio = <&msmgpio 81 0x00>;
-			fsl,sensors-position = <5>;
+		akm8963@0D {
+			compatible = "magnetic,akm8963";
+			reg = <0x0D>;
+			vdd_ana-supply = <&pm8110_l19>;
+			vcc_i2c-supply = <&pm8110_l14>;
 		};
-		capella@60 {
-			compatible = "capella,cm36283";
-			reg = <0x60>;
-			interrupt-parent = <&msmgpio>;
-			interrupts = <80 0x2>;
-			vdd-supply = <&pm8110_l19>;
-			vio-supply = <&pm8110_l14>;
-			capella,use-polling;
-			capella,interrupt-gpio = <&msmgpio 80 0x2>;
-			capella,levels = <0x0A 0xA0 0xE1 0x140 0x280 0x500 0xA28 0x16A8 0x1F40
-				0x2800>;
-			capella,ps_close_thd_set = <0xa>;
-			capella,ps_away_thd_set = <0x5>;
-			capella,ls_cmd = <0x04>; /* ALS_IT=80ms, INT_PERS=2*/
-			capella,ps_conf1_val = <0x0006>;
-			capella,ps_conf3_val = <0x3010>;
-		};
-		nfc-nci@0e {
-			compatible = "qcom,nfc-nci";
-			reg = <0x0e>;
-			qcom,irq-gpio = <&msmgpio 77 0x00>;
-			qcom,dis-gpio = <&msmgpio 93 0x00>;
-			qcom,clk-req-gpio = <&msmgpio 75 0x00>;
-			qcom,clk-src-gpio = <&msmgpio 78 0x00>;
-			qcom,clk-src = "GPCLK";
-			interrupt-parent = <&msmgpio>;
-			interrupts = <77 75 0>;
-			qcom,clk-gpio = <&pm8110_gpios 1 0>;
+		ti_lm3533_leds@36 {
+			compatible = "ti,lm3533_leds";
+			reg = <0x36>;
+			ti,hwen-gpio = <&msmgpio 18 0x00>;
 		};
 	};
 
