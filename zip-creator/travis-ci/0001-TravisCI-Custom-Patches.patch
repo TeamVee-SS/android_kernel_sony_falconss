@@ -1,0 +1,56 @@
+From 07d8bcdcce0c6df742d4f213ed3a0d4569ab00a4 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <Caio99BR@users.noreply.github.com>
+Date: Wed, 26 Oct 2016 11:59:49 -0200
+Subject: [PATCH 1/2] build.sh: Add exit if any command fail [DO NOT MERGE]
+
+---
+ build.sh | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/build.sh b/build.sh
+index 55e243c..29ea846 100644
+--- a/build.sh
++++ b/build.sh
+@@ -10,6 +10,10 @@
+ # You need to download https://github.com/TeamVee/android_prebuilt_toolchains
+ # Clone in the same folder as the kernel to choose a toolchain and not specify a location
+ 
++# For TravisCI
++# Exit if any command fail
++set -e
++
+ # Device Choice
+ device_choice() {
+ clear
+-- 
+2.10.1
+
+
+From bb84367d8803c1d5ab8bb737d55cb89ec0994380 Mon Sep 17 00:00:00 2001
+From: Caio Oliveira <Caio99BR@users.noreply.github.com>
+Date: Wed, 26 Oct 2016 12:00:05 -0200
+Subject: [PATCH 2/2] mkcompile_h: Add custom TravisCI Kernel Version [DO NOT
+ MERGE]
+
+---
+ scripts/mkcompile_h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/mkcompile_h b/scripts/mkcompile_h
+index f221ddf..2bb7309 100755
+--- a/scripts/mkcompile_h
++++ b/scripts/mkcompile_h
+@@ -73,8 +73,8 @@ UTS_TRUNCATE="cut -b -$UTS_LEN"
+ 
+   echo \#define UTS_VERSION \"`echo $UTS_VERSION | $UTS_TRUNCATE`\"
+ 
+-  echo \#define LINUX_COMPILE_BY \"`echo $LINUX_COMPILE_BY | $UTS_TRUNCATE`\"
+-  echo \#define LINUX_COMPILE_HOST \"`echo $LINUX_COMPILE_HOST | $UTS_TRUNCATE`\"
++  echo \#define LINUX_COMPILE_BY \"TeamVee-SS\"
++  echo \#define LINUX_COMPILE_HOST \"TravisCI\"
+ 
+   echo \#define LINUX_COMPILER \"`$CC -v 2>&1 | tail -n 1`\"
+ ) > .tmpcompile
+-- 
+2.10.1
+
