@@ -71,20 +71,20 @@
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
 
-		camera_snapshot {
-			label = "camera_snapshot";
+		vol_down {
+			label = "volume_down";
 			gpios = <&msmgpio 73 0x1>;
 			linux,input-type = <1>;
-			linux,code = <0x2fe>;
+			linux,code = <114>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
 
-		camera_focus {
-			label = "camera_focus";
+		mp3 {
+			label = "mp3";
 			gpios = <&msmgpio 74 0x1>;
 			linux,input-type = <1>;
-			linux,code = <0x210>;
+			linux,code = <391>;
 			gpio-key,wakeup;
 			debounce-interval = <15>;
 		};
