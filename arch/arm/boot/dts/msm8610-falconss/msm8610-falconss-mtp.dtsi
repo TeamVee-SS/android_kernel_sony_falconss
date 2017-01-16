@@ -56,15 +56,18 @@
 		};
 	};
 
-	gen-vkeys {
-		compatible = "qcom,gen-vkeys";
-		label = "atmel_mxt_ts";
-		qcom,disp-maxx = <480>;
-		qcom,disp-maxy = <800>;
-		qcom,panel-maxx = <508>;
-		qcom,panel-maxy = <880>;
-		qcom,key-codes = <158 102 139>;
-		qcom,y-offset = <35>;
+	nmi-isdbt {
+		compatible = "nmi,nmi325_isdbt";
+	};
+
+	spi@f9926000 {
+		nmi325@0 {
+			compatible = "nmi,nmispi";
+			reg = <0>;
+			spi-max-frequency = <5000000>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <0 90 0>;
+		};
 	};
 
 	gpio_keys {
