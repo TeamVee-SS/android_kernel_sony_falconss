@@ -113,6 +113,10 @@
             "AMIC2", "MIC BIAS Internal2",
             "AMIC3", "MIC BIAS External";
     };
+
+	qcom,mdss_dsi_truly_wvga_video {
+		qcom,cont-splash-enabled;
+	};
 };
 
 &i2c_cdc  {
