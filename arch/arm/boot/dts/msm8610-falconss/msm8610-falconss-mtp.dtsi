@@ -177,10 +177,9 @@
 			status = "okay";
 			qcom,led_mpp_2 {
 				label = "mpp";
-				linux,name = "button-backlight";
-				linux-default-trigger = "hr-trigger";
+				linux,name = "green";
 				qcom,default-state = "off";
-				qcom,max-current = <40>;
+				qcom,max-current = <5>;
 				qcom,id = <6>;
 				qcom,source-sel = <1>;
 				qcom,mode-ctrl = <0x60>;
@@ -192,9 +191,8 @@
 			status = "okay";
 			qcom,led_mpp_3 {
 				label = "mpp";
-				linux,name = "wled-backlight";
-				linux,default-trigger = "bkl-trigger";
-				qcom,default-state = "on";
+				linux,name = "red";
+				qcom,default-state = "off";
 				qcom,max-current = <40>;
 				qcom,id = <6>;
 				qcom,source-sel = <8>;
@@ -203,6 +201,13 @@
 				qcom,pwm-us = <27>;
 				qcom,vin-ctrl = <0x03>;
 				qcom,mode = "pwm";
+				qcom,start-idx = <1>;
+				qcom,duty-pcts = [00 00 00 00 00
+						  00 00 00 00 00
+						  50 00 00 00 00
+						  00 00 00 00 00
+						  00];
+				qcom,use-blink;
 			};
 		};
 	};
