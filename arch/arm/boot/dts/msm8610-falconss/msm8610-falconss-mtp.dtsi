@@ -117,6 +117,13 @@
 	qcom,mdss_dsi_truly_wvga_video {
 		qcom,cont-splash-enabled;
 	};
+
+	gps_elna {
+		compatible = "arima,gps_elna";
+		elna,enable-gpio = <&msmgpio 63 0x00>;
+		vcc_elna_l16-supply = <&pm8110_l16>;
+		vcc_elna_l19-supply = <&pm8110_l19>;
+	};
 };
 
 &i2c_cdc  {
