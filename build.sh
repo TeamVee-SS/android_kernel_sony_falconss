@@ -41,7 +41,7 @@ case "${x}" in
 			cp .config arch/${ARCH}/configs/${device_defconfig}
 		fi;;
 esac
-if ! [ "${device_defconfig}" == "" ]
+if [ "${device_defconfig}" != "" ]
 then
 	echo "${x} | Working on ${device_name} defconfig!"
 	make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}" ${device_defconfig}
@@ -73,7 +73,7 @@ else
 	echo "  | Stay blank if you want to exit"
 	echo
 	read -p "  | Place | " CROSS_COMPILE
-	if ! [ "${CROSS_COMPILE}" == "" ]
+	if [ "${CROSS_COMPILE}" != "" ]
 	then
 		ToolchainCompile="${CROSS_COMPILE}"
 	fi
@@ -117,7 +117,7 @@ else
 
 	start_build_time=$(date +"%s")
 	make -j${build_cpu_usage}${kernel_build_output_enable} ARCH="${ARCH}" CROSS_COMPILE="${kernel_build_ccache}${CROSS_COMPILE}"
-	if ! [ "$?" == "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "  | ${color_red}Build Failed! Exiting...${color_stock}"
 		break
@@ -130,7 +130,7 @@ fi
 
 # Zip Packer Process
 zip_packer() {
-if ! [ "${device_defconfig}" == "" ]
+if [ "${device_defconfig}" != "" ]
 then
 	if [ -f arch/${ARCH}/boot/zImage ]
 	then
@@ -207,7 +207,7 @@ then
 	echo
 	adb shell rm -rf /data/media/0/${zipfile} &> /dev/null
 	adb push zip-creator/${zipfile} /data/media/0/${zipfile} &> /dev/null
-	if ! [ "$?" == "0" ]
+	if [ "$?" != "0" ]
 	then
 		echo "  | Copy failed!"
 		if [ ! "$(which adb)" ]
@@ -234,10 +234,7 @@ wrong_choice() {
 echo "${x} | This option is not available! | Something is wrong! | Check ${color_green}Choice Menu${color_stock}!"; sleep 2
 }
 
-if [ ! "${BASH_VERSION}" ]
-then
-	echo "  | Please do not use ${0} to run this script, just use '. build.sh'"
-elif [ -e build.sh ]
+if [ -e build.sh ]
 then
 	# Set ${original_dir}
 	original_dir=$(pwd)
@@ -265,7 +262,7 @@ then
 			unset kernel_build_output_enable
 		fi
 		# Build Time
-		if ! [ "${build_time}" == "" ]
+		if [ "${build_time}" != "" ]
 		then
 			if [ "${build_time_minutes}" == "" ]
 			then
@@ -281,7 +278,7 @@ then
 		k_sub_level=$(cat Makefile | grep SUBLEVEL | cut -c 12- | head -1)
 		kernel_base="${k_version}.${k_patch_level}.${k_sub_level}"
 		release=$(date +%d""%m""%Y)
-		if ! [ -f .version ]
+		if [ ! -f .version ]
 		then
 			echo "0" > .version
 		fi
