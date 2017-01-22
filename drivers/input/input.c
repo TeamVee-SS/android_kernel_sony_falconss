@@ -1604,15 +1604,7 @@ static int input_dev_resume(struct device *dev)
 {
 	struct input_dev *input_dev = to_input_dev(dev);
 
-#ifdef CONFIG_MACH_SONY_FALCONSS
-	mutex_lock(&input_dev->mutex);
-	if (input_dev->users)
-		input_dev_toggle(input_dev, true);
-	mutex_unlock(&input_dev->mutex);
-#else
-	/* removed to avoid the injection of fake key release events */
 	input_reset_device(input_dev);
-#endif
 
 	return 0;
 }
