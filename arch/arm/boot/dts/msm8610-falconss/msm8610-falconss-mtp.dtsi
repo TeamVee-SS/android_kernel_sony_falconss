@@ -56,6 +56,20 @@
 		};
 	};
 
+	nmi-isdbt {
+		compatible = "nmi,nmi325_isdbt";
+	};
+
+	spi@f9926000 {
+		nmi325@0 {
+			compatible = "nmi,nmispi";
+			reg = <0>;
+			spi-max-frequency = <5000000>;
+			interrupt-parent = <&msmgpio>;
+			interrupts = <0 90 0>;
+		};
+	};
+
 	gpio_keys {
 		compatible = "gpio-keys";
 		input-name = "gpio-keys";
