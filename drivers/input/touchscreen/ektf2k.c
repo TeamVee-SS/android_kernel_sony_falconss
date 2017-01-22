@@ -51,7 +51,7 @@
 #define ELAN_I2C_VTG_MAX_UV 1800000
 #define ELAN_I2C_LOAD_UA 10000
 
-#define PACKET_SIZE 28 /* support 5 fingers packet */
+#define PACKET_SIZE 12 /* support 2 fingers packet */
 
 #define CMD_S_PKT 0x52
 #define CMD_R_PKT 0x53
@@ -866,7 +866,6 @@ static int elan_ktf2k_ts_set_mode_state(struct i2c_client *client, int mode)
 		dev_err(&client->dev, "i2c_master_send failed\n");
 		return -EINVAL;
 	}
-	mdelay(1);
 	return 0;
 }
 
@@ -901,7 +900,6 @@ static int elan_ktf2k_ts_set_talking_state(struct i2c_client *client, int mode)
 		dev_err(&client->dev, "i2c_master_send failed\n");
 		return -EINVAL;
 	}
-	mdelay(1);
 	return 0;
 }
 
@@ -959,7 +957,6 @@ static int elan_ktf2k_set_scan_mode(struct i2c_client *client, int mode)
 				"i2c_master_send failed, mode:%d\n", mode);
 			return -EINVAL;
 		}
-		mdelay(1);
 	}
 	return 0;
 }
@@ -1000,14 +997,11 @@ static int elan_ktf2k_ts_recv_data(struct i2c_client *client, uint8_t *buf,
 
 	memset(buf, 0, bytes_to_recv);
 
-	rc = i2c_master_recv(client, buf, bytes_to_recv);
-	if (rc != bytes_to_recv) {
+	rc = i2c_master_recv(client, buf, 8);
+	if (rc != 8) {
 		dev_err(&client->dev, "Read the first package error\n");
-		mdelay(30);
 		return -1;
 	}
-
-	mdelay(1);
 
 	return rc;
 }
@@ -1094,8 +1088,6 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 	case FIVE_FINGERS_PKT:
 	case TEN_FINGERS_PKT:
 		input_report_key(idev, BTN_TOUCH, 1);
-
-		dev_dbg(&client->dev, "%d fingers\n", num);
 		input_report_key(idev, BTN_TOUCH, 1);
 		for (i = 0; i < finger_num; i++) {
 			if ((fbits & 0x01)) {
