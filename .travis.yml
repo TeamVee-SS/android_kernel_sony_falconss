@@ -19,7 +19,7 @@ script:
 - git clone -b "${ntoolchainbranch}" "https://github.com/TeamVee/android_prebuilt_toolchains" "../android_prebuilt_toolchains"
 
 # ${ntoolchainchoice} is your Toolchain Choice
-- export ntoolchainchoice="1"
+- export ntoolchainchoice="2"
 
 # ${ntoolchain}
 # "4" is "Toolchain Choice"
