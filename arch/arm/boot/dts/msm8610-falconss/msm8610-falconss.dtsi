@@ -615,6 +615,7 @@
 		qcom,gpio-cs0  = <&msmgpio 88 0>;
 
 		qcom,infinite-mode = <0>;
+		qcom,use-bam;
 		qcom,ver-reg-exists;
 		qcom,bam-consumer-pipe-index = <18>;
 		qcom,bam-producer-pipe-index = <19>;
