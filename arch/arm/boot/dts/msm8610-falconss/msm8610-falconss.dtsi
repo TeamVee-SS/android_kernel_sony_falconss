@@ -908,25 +908,6 @@
 		interrupts = <0 29 1>;
 	};
 
-	qcom,qseecom@da00000 {
-		compatible = "qcom,qseecom";
-		reg = <0xda00000 0x100000>;
-		reg-names = "secapp-region";
-		qcom,disk-encrypt-pipe-pair = <2>;
-		qcom,hlos-ce-hw-instance = <0>;
-		qcom,qsee-ce-hw-instance = <0>;
-		qcom,support-bus-scaling;
-		qcom,msm-bus,name = "qseecom-noc";
-		qcom,msm-bus,num-cases = <4>;
-		qcom,msm-bus,active-only = <0>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<55 512 0 0>,
-				<55 512 0 0>,
-				<55 512 120000 1200000>,
-				<55 512 393600 3936000>;
-	};
-
 	qcom,msm-rng@f9bff000 {
 		compatible = "qcom,msm-rng";
 		reg = <0xf9bff000 0x200>;
@@ -937,11 +918,6 @@
 		qcom,msm-bus,vectors-KBps =
 				<54 618 0 0>,
 				<54 618 0 800>;
-	};
-
-	qcom,msm-rtb {
-		compatible = "qcom,msm-rtb";
-		qcom,msm-rtb = <0x100000>; /* 1M EBI1 buffer */
 	};
 
 	jtag_fuse: jtagfuse@fc4be024 {
