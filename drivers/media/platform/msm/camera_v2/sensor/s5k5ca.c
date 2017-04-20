@@ -15,17 +15,6 @@
 #include "msm_cci.h"
 #include "msm_sensor.h"
 
-#define CONFIG_MSMB_CAMERA_DEBUG
-
-#undef CDBG
-#ifdef CONFIG_MSMB_CAMERA_DEBUG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
-#else
-#define CDBG(fmt, args...)                                                     \
-	do {                                                                   \
-	} while (0)
-#endif
-
 #define S5KCA_SENSOR_NAME "s5k5ca"
 //#define PLATFORM_DRIVER_NAME "msm_camera_s5k5ca"
 //#define s5k5ca_obj s5k5ca_##obj
@@ -648,8 +637,8 @@ static const struct i2c_device_id s5k5ca_i2c_id[] = {
 static int32_t msm_s5k5ca_i2c_probe(struct i2c_client *client,
 				    const struct i2c_device_id *id)
 {
-	CDBG("%s, E.", __func__);
-	CDBG("%x, E.", client->addr);
+	pr_info("%s: %d: client->addr = [%x]\n", __func__, __LINE__,
+		client->addr);
 
 	return msm_sensor_i2c_probe(client, id, &s5k5ca_s_ctrl);
 }
@@ -685,7 +674,6 @@ static int32_t s5k5ca_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc;
 	const struct of_device_id *match;
-	CDBG("%s, E.", __func__);
 	match = of_match_device(s5k5ca_dt_match, &pdev->dev);
 	rc = msm_sensor_platform_probe(pdev, match->data);
 	return rc;
@@ -694,18 +682,18 @@ static int32_t s5k5ca_platform_probe(struct platform_device *pdev)
 static int __init s5k5ca_init_module(void)
 {
 	int32_t rc;
-	pr_err("peter: %s:%d\n", __func__, __LINE__);
 	rc = platform_driver_probe(&s5k5ca_platform_driver,
 				   s5k5ca_platform_probe);
-	if (!rc)
+	if (!rc) {
+		pr_err("%s: %d: Exited with code [%d]\n", __func__, __LINE__,
+		       rc);
 		return rc;
-	pr_err("%s:%d rc %d\n", __func__, __LINE__, rc);
+	}
 	return i2c_add_driver(&s5k5ca_i2c_driver);
 }
 
 static void __exit s5k5ca_exit_module(void)
 {
-	pr_info("%s:%d\n", __func__, __LINE__);
 	if (s5k5ca_s_ctrl.pdev) {
 		msm_sensor_free_sensor_data(&s5k5ca_s_ctrl);
 		platform_driver_unregister(&s5k5ca_platform_driver);
@@ -745,8 +733,6 @@ int32_t s5k5ca_sensor_power_up(struct msm_sensor_ctrl_t *s_ctrl)
 
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[index];
-
-	CDBG("peter: %s:%d\n", __func__, __LINE__);
 #if 0
 for(i=0;i<data->gpio_conf->cam_gpio_req_tbl_size;i++)
 CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gpio),gpio_req[i].label);
@@ -755,7 +741,8 @@ CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gp
 	    data->gpio_conf->cam_gpio_req_tbl,
 	    data->gpio_conf->cam_gpio_req_tbl_size, 1);
 	if (rc < 0) {
-		pr_err("%s: request gpio failed\n", __func__);
+		pr_err("%s: %d: request gpio failed with code [%d]\n", __func__,
+		       __LINE__, rc);
 		return rc;
 	}
 	// RST enable
@@ -785,14 +772,15 @@ CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gp
 		s_ctrl->clk_info[power_setting->seq_val].clk_rate =
 		    power_setting->config_val;
 	}
-	CDBG("peter: %s:%d clk_rate:%ld clk_info_size:%d", __func__, __LINE__,
-	     s_ctrl->clk_info[power_setting->seq_val].clk_rate,
-	     s_ctrl->clk_info_size);
+	pr_info("%s: %d: clk_rate = [%ld], clk_info_size = [%d]\n", __func__,
+		__LINE__, s_ctrl->clk_info[power_setting->seq_val].clk_rate,
+		s_ctrl->clk_info_size);
 	rc = msm_cam_clk_enable(s_ctrl->dev, &s_ctrl->clk_info[0],
 				(struct clk **)&power_setting->data[0],
 				s_ctrl->clk_info_size, 1);
 	if (rc < 0) {
-		pr_err("%s: clk enable failed\n", __func__);
+		pr_err("%s: %d: clk enable failed with code [%d]\n", __func__,
+		       __LINE__, rc);
 	}
 
 	usleep(10000);
@@ -814,15 +802,16 @@ CDBG("Peter: gpio:%d value:%d %s",gpio_req[i].gpio,gpio_get_value(gpio_req[i].gp
 	else
 		rc = msm_sensor_match_id(s_ctrl);
 	if (rc < 0) {
-		pr_err("%s:%d match id failed rc %d\n", __func__, __LINE__, rc);
+		pr_err("%s: %d: Match id failed with code [%d]\n", __func__,
+		       __LINE__, rc);
 	}
 
 	HW_VERSION_GPIO = gpio_req[5].gpio;
 
 	HW_VERSION = gpio_get_value(HW_VERSION_GPIO);
 	s_ctrl->sensordata->sensor_init_params->HW_VERSION = HW_VERSION;
-	pr_err("%s: HW_VERSION_GPIO=%d,HW_VERSION=%d\n", __func__,
-	       HW_VERSION_GPIO, HW_VERSION);
+	pr_info("%s: %d: HW_VERSION_GPIO = [%d], HW_VERSION = [%d]\n", __func__,
+		__LINE__, HW_VERSION_GPIO, HW_VERSION);
 
 	return rc;
 }
@@ -836,8 +825,6 @@ int32_t s5k5ca_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 
 	power_setting_array = &s_ctrl->power_setting_array;
 	power_setting = &power_setting_array->power_setting[index];
-
-	CDBG("%s:%d\n", __func__, __LINE__);
 
 	// RST enable
 	gpio_direction_output(gpio_req[4].gpio, 0);
@@ -860,7 +847,8 @@ int32_t s5k5ca_sensor_power_down(struct msm_sensor_ctrl_t *s_ctrl)
 	    data->gpio_conf->cam_gpio_req_tbl,
 	    data->gpio_conf->cam_gpio_req_tbl_size, 0);
 	if (rc < 0) {
-		pr_err("%s: request gpio failed\n", __func__);
+		pr_err("%s: %d: request gpio failed with code [%d]\n", __func__,
+		       __LINE__, rc);
 		//		return rc;
 	}
 
@@ -871,12 +859,10 @@ int32_t s5k5ca_shutter_speed_switch(struct msm_sensor_ctrl_t *s_ctrl,
 {
 	long rc = 0;
 	uint16_t max_value = 0, min_value = 0;
-	pr_err("%s:%d s5k5ca_shutter_speed_switch:%d \n", __func__, __LINE__,
-	       sut_speed);
 	switch (sut_speed) {
 	case 0:
-		pr_err("%s:%d sut_speed:%d do nothing \n", __func__, __LINE__,
-		       sut_speed);
+		pr_err("%s: %d: sut_speed = [%d], do nothing?\n", __func__,
+		       __LINE__, sut_speed);
 
 		break;
 
@@ -901,7 +887,7 @@ int32_t s5k5ca_shutter_speed_switch(struct msm_sensor_ctrl_t *s_ctrl,
 		break;
 
 	default:
-		pr_err("%s:%d sut_speed paramter error:%d \n", __func__,
+		pr_err("%s: %d: sut_speed paramter error = [%d]\n", __func__,
 		       __LINE__, sut_speed);
 		break;
 	}
@@ -933,8 +919,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 	int32_t gain = 0, shutter = 0;
 
 	mutex_lock(s_ctrl->msm_sensor_mutex);
-	CDBG("%s:%d %s cfgtype = %d\n", __func__, __LINE__,
-	     s_ctrl->sensordata->sensor_name, cdata->cfgtype);
+	pr_info("%s: %d: %s: cfgtype = [%d]\n", __func__, __LINE__,
+		s_ctrl->sensordata->sensor_name, cdata->cfgtype);
 	switch (cdata->cfgtype) {
 	case CFG_GET_SENSOR_INFO:
 		memcpy(cdata->cfg.sensor_info.sensor_name,
@@ -945,18 +931,20 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		for (i = 0; i < SUB_MODULE_MAX; i++)
 			cdata->cfg.sensor_info.subdev_id[i] =
 			    s_ctrl->sensordata->sensor_info->subdev_id[i];
-		CDBG("%s:%d sensor name %s\n", __func__, __LINE__,
-		     cdata->cfg.sensor_info.sensor_name);
-		CDBG("%s:%d session id %d\n", __func__, __LINE__,
-		     cdata->cfg.sensor_info.session_id);
+		pr_info("%s: %d: sensor name [%s]\n", __func__, __LINE__,
+			cdata->cfg.sensor_info.sensor_name);
+		pr_info("%s: %d: session id [%d]\n", __func__, __LINE__,
+			cdata->cfg.sensor_info.session_id);
 		for (i = 0; i < SUB_MODULE_MAX; i++)
-			CDBG("%s:%d subdev_id[%d] %d\n", __func__, __LINE__, i,
-			     cdata->cfg.sensor_info.subdev_id[i]);
+			pr_info("%s: %d: subdev_id%d = [%d]\n", __func__,
+				__LINE__, i,
+				cdata->cfg.sensor_info.subdev_id[i]);
 
 		break;
 	case CFG_SET_INIT_SETTING:
 		/* Write Recommend settings */
-		pr_err("%s, sensor write init setting!E", __func__);
+		pr_info("%s: %d: sensor write init setting!\n", __func__,
+			__LINE__);
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 		    s_ctrl->sensor_i2c_client, 0xfcfc, 0xd000,
 		    MSM_CAMERA_I2C_WORD_DATA);
@@ -981,16 +969,19 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			ARRAY_SIZE(s5k5ca_recommend_settings),
 			MSM_CAMERA_I2C_WORD_DATA);
 		// usleep(140000);
-		pr_err("%s, sensor write init setting!X", __func__);
+		pr_info("%s: %d: sensor write init setting!\n", __func__,
+			__LINE__);
 #else
-		pr_err("%s, sensor write init setting move to "
-		       "CFG_SET_START_STREAM!X",
-		       __func__);
+		pr_err("%s: %d: sensor write init setting move to "
+		       "CFG_SET_START_STREAM!\n",
+		       __func__, __LINE__);
 #endif
 		break;
 	case CFG_SET_RESOLUTION:
-		pr_err("%s, sensor_state:%d setting:%d CFG_SET_RESOLUTION!!",
-		       __func__, sensor_state, *((int *)(cdata->cfg.setting)));
+		pr_info("%s: %d: sensor_state = [%d], setting = [%d], "
+			"CFG_SET_RESOLUTION!!\n",
+			__func__, __LINE__, sensor_state,
+			*((int *)(cdata->cfg.setting)));
 		//		if( sensor_state == 1 )
 		//			sensor_state =2;
 		//		else if( sensor_state == 2 )
@@ -998,9 +989,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		//		else
 		//			sensor_state =0;
 		if (*((int *)(cdata->cfg.setting)) == 1) {
-			pr_err("%s, CFG_SET_RESOLUTION-preview_settings   "
-			       "global_current_iso_state=%d !!",
-			       __func__, global_current_iso_state);
+			pr_info("%s: %d: global_current_iso_state = [%d]\n",
+				__func__, __LINE__, global_current_iso_state);
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl
 				 ->i2c_write_conf_tbl(
 				     s_ctrl->sensor_i2c_client,
@@ -1011,9 +1001,10 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			if (night_mode_flag) // If least status is night ,reset
 					     // night mode setting
 			{
-				pr_err("%s:%d set night mode[%d] in preview "
-				       "setting \n",
-				       __func__, __LINE__, 3);
+				pr_info(
+				    "%s: %d: set night mode [%d] in preview "
+				    "setting\n",
+				    __func__, __LINE__, 3);
 				rc = s_ctrl->sensor_i2c_client->i2c_func_tbl
 					 ->i2c_write_conf_tbl(
 					     s_ctrl->sensor_i2c_client,
@@ -1025,10 +1016,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			//			sensor_state = 2;
 		} else if (*((int *)(cdata->cfg.setting)) == 0) {
 
-			pr_err("%s, "
-			       "CFG_SET_RESOLUTION-!!night_mode_capture_flag=%"
-			       "d",
-			       __func__, night_mode_capture_flag);
+			pr_info("%s: %d: night_mode_capture_flag = [%d]\n",
+				__func__, __LINE__, night_mode_capture_flag);
 
 			// decrease capture brightness setting to 0x0048
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
@@ -1076,7 +1065,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 		break;
 	case CFG_SET_STOP_STREAM:
-		pr_err("%s, sensor stop stream!!", __func__);
+		pr_info("%s: %d: sensor stop stream!!\n", __func__, __LINE__);
 		// Stream off command:
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 		    s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1091,15 +1080,16 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    s_ctrl->sensor_i2c_client, 0x0F12, 0x0001,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0) {
-			pr_err("%s: %s: rc:%ld read id failed\n", __func__,
+			pr_err("%s: %d: %s: read id failed with code [%ld]\n",
+			       __func__, __LINE__,
 			       s_ctrl->sensordata->sensor_name, rc);
 			// return rc;
 		}
 		// usleep(140000);
 		break;
 	case CFG_SET_START_STREAM:
-		pr_err("%s, sensor_state:%d sensor start stream!!", __func__,
-		       sensor_state);
+		pr_info("%s: %d: sensor_state = [%d], sensor start stream!!\n",
+			__func__, __LINE__, sensor_state);
 		{
 #if 0
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
@@ -1127,8 +1117,9 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				s_ctrl->sensor_i2c_client, 0x0F12, 0x0001,
 				MSM_CAMERA_I2C_WORD_DATA);
 			if (rc < 0) {
-				pr_err("%s: %s: rc:%ld read id failed\n",
-				       __func__,
+				pr_err("%s: %d: %s: read id failed with code "
+				       "[%ld]\n",
+				       __func__, __LINE__,
 				       s_ctrl->sensordata->sensor_name, rc);
 				// return rc;
 			}
@@ -1160,13 +1151,13 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    *s_ctrl->sensordata->sensor_init_params;
 		//		cdata->cfg.sensor_init_params.HW_VERSION
 		//=HW_VERSION;
-		CDBG("%s:%d init params mode %d pos %d mount %d  HW_VERSION %d "
-		     "  \n",
-		     __func__, __LINE__,
-		     cdata->cfg.sensor_init_params.modes_supported,
-		     cdata->cfg.sensor_init_params.position,
-		     cdata->cfg.sensor_init_params.sensor_mount_angle,
-		     cdata->cfg.sensor_init_params.HW_VERSION);
+		pr_info("%s: %d: init params mode = [%d], pos = [%d], mount = "
+			"[%d], HW_VERSION = [%d]\n",
+			__func__, __LINE__,
+			cdata->cfg.sensor_init_params.modes_supported,
+			cdata->cfg.sensor_init_params.position,
+			cdata->cfg.sensor_init_params.sensor_mount_angle,
+			cdata->cfg.sensor_init_params.HW_VERSION);
 		break;
 	case CFG_SET_SLAVE_INFO: {
 		struct msm_camera_sensor_slave_info sensor_slave_info;
@@ -1175,7 +1166,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		if (copy_from_user(
 			&sensor_slave_info, (void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_sensor_slave_info))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
@@ -1198,7 +1189,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				sizeof(struct msm_sensor_power_setting),
 			    GFP_KERNEL);
 		if (!power_setting_array->power_setting) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: Failed\n", __func__, __LINE__);
 			rc = -ENOMEM;
 			break;
 		}
@@ -1209,31 +1200,31 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			power_setting_array->size *
 			    sizeof(struct msm_sensor_power_setting))) {
 			kfree(power_setting_array->power_setting);
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: Failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
 		s_ctrl->free_power_setting = true;
-		CDBG("%s sensor id %x\n", __func__,
-		     sensor_slave_info.slave_addr);
-		CDBG("%s sensor addr type %d\n", __func__,
-		     sensor_slave_info.addr_type);
-		CDBG("%s sensor reg %x\n", __func__,
-		     sensor_slave_info.sensor_id_info.sensor_id_reg_addr);
-		CDBG("%s sensor id %x\n", __func__,
-		     sensor_slave_info.sensor_id_info.sensor_id);
+		pr_info("%s: %d: sensor id = [%x]\n", __func__, __LINE__,
+			sensor_slave_info.slave_addr);
+		pr_info("%s: %d: sensor addr type = [%d]\n", __func__, __LINE__,
+			sensor_slave_info.addr_type);
+		pr_info("%s: %d: sensor reg = [%x]\n", __func__, __LINE__,
+			sensor_slave_info.sensor_id_info.sensor_id_reg_addr);
+		pr_info("%s: %d: sensor id = [%x]\n", __func__, __LINE__,
+			sensor_slave_info.sensor_id_info.sensor_id);
 		for (slave_index = 0; slave_index < power_setting_array->size;
 		     slave_index++) {
-			CDBG("%s i %d power setting %d %d %ld %d\n", __func__,
-			     slave_index,
-			     power_setting_array->power_setting[slave_index]
-				 .seq_type,
-			     power_setting_array->power_setting[slave_index]
-				 .seq_val,
-			     power_setting_array->power_setting[slave_index]
-				 .config_val,
-			     power_setting_array->power_setting[slave_index]
-				 .delay);
+			pr_info("%s: %d: %d: power setting: [%d/%d/%ld/%d]\n",
+				__func__, __LINE__, slave_index,
+				power_setting_array->power_setting[slave_index]
+				    .seq_type,
+				power_setting_array->power_setting[slave_index]
+				    .seq_val,
+				power_setting_array->power_setting[slave_index]
+				    .config_val,
+				power_setting_array->power_setting[slave_index]
+				    .delay);
 		}
 		kfree(power_setting_array->power_setting);
 		break;
@@ -1244,7 +1235,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 		if (copy_from_user(&conf_array, (void *)cdata->cfg.setting,
 				   sizeof(struct msm_camera_i2c_reg_setting))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
@@ -1253,7 +1244,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    conf_array.size * (sizeof(struct msm_camera_i2c_reg_array)),
 		    GFP_KERNEL);
 		if (!reg_setting) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -ENOMEM;
 			break;
 		}
@@ -1261,7 +1252,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			reg_setting, (void *)conf_array.reg_setting,
 			conf_array.size *
 			    sizeof(struct msm_camera_i2c_reg_array))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			kfree(reg_setting);
 			rc = -EFAULT;
 			break;
@@ -1281,7 +1272,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		if (copy_from_user(
 			&conf_array, (void *)cdata->cfg.setting,
 			sizeof(struct msm_camera_i2c_seq_reg_setting))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
@@ -1291,7 +1282,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				(sizeof(struct msm_camera_i2c_seq_reg_array)),
 			    GFP_KERNEL);
 		if (!reg_setting) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -ENOMEM;
 			break;
 		}
@@ -1299,7 +1290,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			reg_setting, (void *)conf_array.reg_setting,
 			conf_array.size *
 			    sizeof(struct msm_camera_i2c_seq_reg_array))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			kfree(reg_setting);
 			rc = -EFAULT;
 			break;
@@ -1347,7 +1338,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_i2c_reg_array *reg_setting = NULL;
 		if (copy_from_user(stop_setting, (void *)cdata->cfg.setting,
 				   sizeof(struct msm_camera_i2c_reg_setting))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -EFAULT;
 			break;
 		}
@@ -1358,7 +1349,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				(sizeof(struct msm_camera_i2c_reg_array)),
 			    GFP_KERNEL);
 		if (!stop_setting->reg_setting) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			rc = -ENOMEM;
 			break;
 		}
@@ -1366,7 +1357,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			stop_setting->reg_setting, (void *)reg_setting,
 			stop_setting->size *
 			    sizeof(struct msm_camera_i2c_reg_array))) {
-			pr_err("%s:%d failed\n", __func__, __LINE__);
+			pr_err("%s: %d: failed\n", __func__, __LINE__);
 			kfree(stop_setting->reg_setting);
 			stop_setting->reg_setting = NULL;
 			stop_setting->size = 0;
@@ -1381,8 +1372,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		if (s5k5ca_wb_size[*((int *)(cdata->cfg.setting))] == 0)
 			*((int *)(cdata->cfg.setting)) = 0;
 
-		pr_err("%s:%d value:%d CFG_SET_WHITEBALANCE\n", __func__,
-		       __LINE__, *((int *)(cdata->cfg.setting)));
+		pr_info("%s: %d: value = [%d], CFG_SET_WHITEBALANCE\n",
+			__func__, __LINE__, *((int *)(cdata->cfg.setting)));
 		rc =
 		    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client,
@@ -1437,8 +1428,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		//mode***********************
 		// if(night_mode_preview_flag)
 		{
-			pr_err("%s:%d initial normal mode=%d \n", __func__,
-			       __LINE__, bestshot);
+			pr_info("%s: %d: initial normal mode = [%d]\n",
+				__func__, __LINE__, bestshot);
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl
 				 ->i2c_write_conf_tbl(s_ctrl->sensor_i2c_client,
 						      s5k5ca_best_shot[0],
@@ -1447,11 +1438,11 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 			night_mode_preview_flag = 0;
 		}
 
-		pr_err("%s:%d CFG_SET_BESTSHOT =%d\n", __func__, __LINE__,
-		       *((int *)(cdata->cfg.setting)));
+		pr_info("%s: %d: CFG_SET_BESTSHOT = [%d]\n", __func__, __LINE__,
+			*((int *)(cdata->cfg.setting)));
 		//************************* reduce party&cloudy++***************
-		pr_err("%s:%d [reduce_party_cloudy_flag]  flag=%d \n", __func__,
-		       __LINE__, reduce_party_cloudy_flag);
+		pr_info("%s: %d: reduce_party_cloudy_flag = [%d]\n", __func__,
+			__LINE__, reduce_party_cloudy_flag);
 		if (reduce_party_cloudy_flag) {
 			rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 			    s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1595,8 +1586,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		} else
 			bestshot = 0;
 
-		pr_err("%s:%d SENSOR_SET_BESTSHOT=%d \n", __func__, __LINE__,
-		       bestshot);
+		pr_info("%s: %d: SENSOR_SET_BESTSHOT = [%d]\n", __func__,
+			__LINE__, bestshot);
 		rc =
 		    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client, s5k5ca_best_shot[bestshot],
@@ -1606,8 +1597,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		//*************************Ev_setting
 		//++*************************
 		if (Ev_feature) {
-			pr_err("%s:%d [Morpho_setting]  Ev_value=%d \n",
-			       __func__, __LINE__, brightness_value);
+			pr_info("%s: %d: [Morpho_setting]: Ev_value = [%d]\n",
+				__func__, __LINE__, brightness_value);
 			rc |=
 			    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 				s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1622,9 +1613,9 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				(brightness_value * 10),
 				MSM_CAMERA_I2C_WORD_DATA);
 		} else {
-			pr_err("%s:%d [sensor_setting]  Ev_value=%d \n",
-			       __func__, __LINE__,
-			       global_current_brightness_state);
+			pr_info("%s: %d: [sensor_setting] Ev_value = [%d]\n",
+				__func__, __LINE__,
+				global_current_brightness_state);
 			rc |=
 			    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 				s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1643,8 +1634,9 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 		//***********************iso_setting++*****************************
 		if (iso_feature) {
-			pr_err("%s:%d [Morpho_iso_setting]  iso_value=%d \n",
-			       __func__, __LINE__, iso_value);
+			pr_info(
+			    "%s: %d: [Morpho_iso_setting] iso_value = [%d]\n",
+			    __func__, __LINE__, iso_value);
 			rc |=
 			    s_ctrl->sensor_i2c_client->i2c_func_tbl
 				->i2c_write_conf_tbl(s_ctrl->sensor_i2c_client,
@@ -1652,8 +1644,9 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 						     s5k5ca_iso_size[iso_value],
 						     MSM_CAMERA_I2C_WORD_DATA);
 		} else {
-			pr_err("%s:%d [sensor_iso_setting]  iso_value=%d \n",
-			       __func__, __LINE__, global_current_iso_state);
+			pr_info(
+			    "%s: %d: [sensor_iso_setting] iso_value = [%d]\n",
+			    __func__, __LINE__, global_current_iso_state);
 			rc |= s_ctrl->sensor_i2c_client->i2c_func_tbl
 				  ->i2c_write_conf_tbl(
 				      s_ctrl->sensor_i2c_client,
@@ -1714,7 +1707,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		//			if(global_current_iso_state==0)
 		global_current_iso_state = iso;
 
-		pr_err("%s:%d CFG_SET_ISO=%d \n", __func__, __LINE__, iso);
+		pr_info("%s: %d: CFG_SET_ISO = [%d]\n", __func__, __LINE__,
+			iso);
 		rc =
 		    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write_conf_tbl(
 			s_ctrl->sensor_i2c_client, s5k5ca_iso[iso],
@@ -1730,8 +1724,8 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 
 		brightness = *((int *)(cdata->cfg.setting));
 		global_current_brightness_state = brightness;
-		pr_err("%s:%d CFG_SET_BRIGHTNESS=%d \n", __func__, __LINE__,
-		       brightness);
+		pr_info("%s: %d: CFG_SET_BRIGHTNESS = [%d]\n", __func__,
+			__LINE__, brightness);
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 		    s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
 		    MSM_CAMERA_I2C_WORD_DATA);
@@ -1758,8 +1752,10 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    s_ctrl->sensor_i2c_client, 0x0F12, &lchipid,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0) {
-			pr_err("%s: %s: rc:%ld read 3 lchipid id failed\n",
-			       __func__, s_ctrl->sensordata->sensor_name, rc);
+			pr_err("%s: %d: %s: read 3 lchipid id failed with code "
+			       "[%ld]\n",
+			       __func__, __LINE__,
+			       s_ctrl->sensordata->sensor_name, rc);
 			//				return rc;
 		}
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
@@ -1772,8 +1768,10 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    s_ctrl->sensor_i2c_client, 0x0F12, &hchipid,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0) {
-			pr_err("%s: %s: rc:%ld read 3 hchipid id failed\n",
-			       __func__, s_ctrl->sensordata->sensor_name, rc);
+			pr_err("%s: %d: %s: read 3 lchipid id failed with code "
+			       "[%ld]\n",
+			       __func__, __LINE__,
+			       s_ctrl->sensordata->sensor_name, rc);
 			// return rc;
 		}
 		shutter = ((hchipid << 4) | lchipid) / 400;
@@ -1793,11 +1791,14 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    s_ctrl->sensor_i2c_client, 0x0F12, &lchipid,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0) {
-			pr_err("%s: %s: rc:%ld read 3 gain id failed\n",
-			       __func__, s_ctrl->sensordata->sensor_name, rc);
+			pr_err("%s: %d: %s: read 3 gain id failed with code "
+			       "[%ld]\n",
+			       __func__, __LINE__,
+			       s_ctrl->sensordata->sensor_name, rc);
 			// return rc;
 		}
-		pr_err("lchipid =%d\n", lchipid);
+		pr_info("%s: %d: lchipid = [%d]\n", __func__, __LINE__,
+			lchipid);
 		gain = lchipid / 2;
 		if (gain < 1)
 			gain = 1;
@@ -1827,8 +1828,10 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		    s_ctrl->sensor_i2c_client, 0x0F12, &lchipid,
 		    MSM_CAMERA_I2C_WORD_DATA);
 		if (rc < 0) {
-			pr_err("%s: %s: rc:%ld read 3 gain id failed\n",
-			       __func__, s_ctrl->sensordata->sensor_name, rc);
+			pr_err("%s: %d: %s: read 3 gain id failed with code "
+			       "[%ld]\n",
+			       __func__, __LINE__,
+			       s_ctrl->sensordata->sensor_name, rc);
 			// return rc;
 		}
 		memcpy(cdata->cfg.setting, (void *)&lchipid, sizeof(int32_t));
@@ -1854,9 +1857,10 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		uint16_t bv = 0;
 		uint16_t iso_value = global_current_iso_state;
 
-		pr_err("%s:%d CFG_SET_AUTO_BESTSHOT_MODE [auto scene mode item "
-		       "] =%d\n",
-		       __func__, __LINE__, (*((int *)(cdata->cfg.setting))));
+		pr_info(
+		    "%s: %d: CFG_SET_AUTO_BESTSHOT_MODE [auto scene mode item "
+		    "] = [%d]\n",
+		    __func__, __LINE__, (*((int *)(cdata->cfg.setting))));
 		if ((*((int *)(cdata->cfg.setting))) == 0)
 			bv = global_current_brightness_state;
 		else if ((*((int *)(cdata->cfg.setting))) == 1)
@@ -1886,14 +1890,14 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 		} else if ((*((int *)(cdata->cfg.setting))) == 11)
 			bv = global_current_brightness_state + U_EV_1;
 		else
-			pr_err("%s:%d There is mo this setting\n", __func__,
+			pr_err("%s: %d: There is mo this setting\n", __func__,
 			       __LINE__);
 		if (bv == 0)
 			bv = global_current_brightness_state;
 
 		if (global_current_brightness_state != bv) {
-			pr_err("%s:%d [Auto scene ev ]  Ev_value=%d \n",
-			       __func__, __LINE__, bv);
+			pr_info("%s: %d: [Auto scene ev] Ev_value = [%d]\n",
+				__func__, __LINE__, bv);
 			rc |=
 			    s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 				s_ctrl->sensor_i2c_client, 0x0028, 0x7000,
@@ -1908,7 +1912,7 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 				MSM_CAMERA_I2C_WORD_DATA);
 		}
 
-		pr_err("%s:%d [Auto scene iso] , iso_value=%d \n", __func__,
+		pr_err("%s: %d: [Auto scene iso] , iso_value= [%d]\n", __func__,
 		       __LINE__, iso_value);
 
 		rc |=
@@ -1920,15 +1924,14 @@ int32_t s5k5ca_sensor_config(struct msm_sensor_ctrl_t *s_ctrl,
 #endif
 	// Qualcomm patch--
 	default:
-		pr_err("%s:%d value:%d to do the other config case\n", __func__,
-		       __LINE__, *((int *)(cdata->cfg.setting)));
+		pr_err("%s: %d: value = [%d], to do the other config case\n",
+		       __func__, __LINE__, *((int *)(cdata->cfg.setting)));
 		rc = 0;
 		break;
 	}
 
 	mutex_unlock(s_ctrl->msm_sensor_mutex);
 
-	pr_err("%s:%d rc:%ld X\n", __func__, __LINE__, rc);
 	return rc;
 }
 
@@ -1937,9 +1940,11 @@ int32_t s5k5ca_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	int32_t rc = 0;
 	uint16_t chipid = 0;
 
-	CDBG("peter: %s, E. calling i2c_read:, i2c_addr:%x, id_reg_addr:%x",
-	     __func__, s_ctrl->sensordata->slave_info->sensor_slave_addr,
-	     s_ctrl->sensordata->slave_info->sensor_id_reg_addr);
+	pr_info(
+	    "%s: %d: calling i2c_read: i2c_addr = [%x], id_reg_addr = [%x]\n",
+	    __func__, __LINE__,
+	    s_ctrl->sensordata->slave_info->sensor_slave_addr,
+	    s_ctrl->sensordata->slave_info->sensor_id_reg_addr);
 
 	rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->i2c_write(
 	    s_ctrl->sensor_i2c_client, 0xfcfc, 0xd000,
@@ -1955,14 +1960,15 @@ int32_t s5k5ca_match_id(struct msm_sensor_ctrl_t *s_ctrl)
 	    s_ctrl->sensor_i2c_client, 0x0F12, &chipid,
 	    MSM_CAMERA_I2C_WORD_DATA);
 	if (rc < 0) {
-		pr_err("%s: %s: rc:%d read id failed\n", __func__,
-		       s_ctrl->sensordata->sensor_name, rc);
+		pr_err("%s: %d: %s: read id failed with code [%d]\n", __func__,
+		       __LINE__, s_ctrl->sensordata->sensor_name, rc);
 		return rc;
 	}
 
-	CDBG("%s: read id: %x expected id :\n", __func__, chipid);
+	pr_info("%s: %d: [read id/expected id] = [%x/0x05ca]\n", __func__,
+		__LINE__, chipid);
 	if (chipid != 0x05ca) {
-		pr_err("msm_sensor_match_id chip id doesnot match\n");
+		pr_err("%s: %d: chip id doesn't match\n", __func__, __LINE__);
 		return -ENODEV;
 	}
 
