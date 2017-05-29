@@ -50,7 +50,6 @@
 #include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
-#include <linux/earlysuspend.h>
 #include <linux/gpio.h>
 #include <linux/i2c.h>
 #include <linux/input.h>
@@ -223,7 +222,6 @@ struct elan_ktf2k_ts_data {
 	struct workqueue_struct *elan_wq;
 	struct work_struct work;
 	struct delayed_work check_work;
-	struct early_suspend early_suspend;
 	struct elan_ktf2k_i2c_platform_data *pdata;
 	int intr_gpio;
 	int reset_gpio; // Arima Edison add
@@ -3431,7 +3429,6 @@ static int elan_ktf2k_ts_remove(struct i2c_client *client)
 {
 	struct elan_ktf2k_ts_data *ts = i2c_get_clientdata(client);
 
-	unregister_early_suspend(&ts->early_suspend);
 	free_irq(client->irq, ts);
 
 	if (ts->elan_wq)
@@ -3595,7 +3592,7 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 }
 
 static const struct dev_pm_ops ktf2k_pm_ops = {
-#if (!defined(CONFIG_FB) && !defined(CONFIG_HAS_EARLYSUSPEND))
+#if (!defined(CONFIG_FB))
     .suspend = elan_ktf2k_ts_suspend, .resume = elan_ktf2k_ts_resume,
 #endif
 };
