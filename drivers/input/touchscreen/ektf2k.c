@@ -884,7 +884,6 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 	case 0x78: // chip may reset due to watch dog
 	case 0x66: // calibration packet type
 	case 0x55: // chip may reset due to watch dog
-	case 0x34: // removed talking set mode
 		break;
 	case MTK_FINGERS_PKT:
 	case TWO_FINGERS_PKT:
@@ -983,7 +982,10 @@ static void elan_ktf2k_ts_work_func(struct work_struct *work)
 		return;
 	}
 
-	elan_ktf2k_ts_report_data(ts->client, buf);
+	// removed talking set mode
+	if (buf[0] != 0x52) {
+		elan_ktf2k_ts_report_data(ts->client, buf);
+	}
 
 	enable_irq(ts->client->irq);
 
