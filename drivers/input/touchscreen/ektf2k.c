@@ -212,8 +212,6 @@ static int elan_ktf2k_set_scan_mode(struct i2c_client *client, int mode);
 static struct elan_ktf2k_ts_data *private_ts;
 static int elan_ktf2k_ts_setup(struct i2c_client *client);
 static int elan_ktf2k_ts_hw_reset(struct i2c_client *client);
-static int elan_ktf2k_ts_poll(struct i2c_client *client);
-static int __elan_ktf2k_ts_poll(struct i2c_client *client);
 static int __fw_packet_handler(struct i2c_client *client);
 static int
 elan_ktf2k_ts_rough_calibrate(struct i2c_client *client); // Arima Edison mask
@@ -516,9 +514,6 @@ IAP_RESTART:
 		gpio_set_value(SYSTEM_RESET_PIN_SR, 1);
 		mdelay(5);
 		if (chip_type == 0x22) {
-			if (elan_ktf2k_ts_poll(private_ts->client) <
-			    0) // detect the status of int pin
-				goto IAP_RESTART; // means poll fail
 			res = i2c_master_recv(private_ts->client,
 					      recovery_buffer, 8);
 			res =
@@ -628,30 +623,9 @@ IAP_RESTART:
 }
 // End Firmware Update
 
-static int __elan_ktf2k_ts_poll(struct i2c_client *client)
-{
-	struct elan_ktf2k_ts_data *ts = i2c_get_clientdata(client);
-	int status = 0, retry = 20;
-
-	do {
-		status = gpio_get_value(ts->intr_gpio);
-		retry--;
-		msleep(25);
-	} while (status == 1 && retry > 0);
-
-	return (status == 0 ? 0 : -ETIMEDOUT);
-}
-
-static int elan_ktf2k_ts_poll(struct i2c_client *client)
-{
-	return __elan_ktf2k_ts_poll(client);
-}
-
 static int elan_ktf2k_ts_get_data(struct i2c_client *client, uint8_t *cmd,
 				  uint8_t *buf, size_t size)
 {
-	int rc;
-
 	dev_dbg(&client->dev, "[elan]%s: enter\n", __func__);
 
 	if (buf == NULL)
@@ -663,14 +637,8 @@ static int elan_ktf2k_ts_get_data(struct i2c_client *client, uint8_t *cmd,
 		return -EINVAL;
 	}
 
-	rc = elan_ktf2k_ts_poll(client);
-	if (rc < 0)
+	if (i2c_master_recv(client, buf, size) != size || buf[0] != CMD_S_PKT)
 		return -EINVAL;
-	else {
-		if (i2c_master_recv(client, buf, size) != size ||
-		    buf[0] != CMD_S_PKT)
-			return -EINVAL;
-	}
 
 	return 0;
 }
@@ -679,14 +647,6 @@ static int __hello_packet_handler(struct i2c_client *client)
 {
 	int rc;
 	uint8_t buf_recv[8] = {0};
-
-	rc = elan_ktf2k_ts_poll(client);
-	if (rc < 0) {
-		printk("[elan] %s: Int poll failed!\n", __func__);
-		RECOVERY = 0x80;
-		return 0x88; // means we do not get irq status
-			     // return -EINVAL;
-	}
 
 	rc = i2c_master_recv(client, buf_recv, 8);
 	//[Arima Edison] do the receive it again++
@@ -800,21 +760,13 @@ static inline int elan_ktf2k_ts_parse_xy(uint8_t *data, uint16_t *x,
 static int elan_ktf2k_ts_setup(struct i2c_client *client)
 {
 	int rc = 0;
-	int touch_retry = 0;
 
-	touch_retry = 3;
-
-	do {
-		elan_ktf2k_ts_hw_reset(client);
-		rc = __hello_packet_handler(client);
-		touch_retry--;
-	} while (rc == 0x88 && touch_retry > 0);
-
-	printk("[elan] first hellopacket's rc = %d\n", rc);
+	elan_ktf2k_ts_hw_reset(client);
+	rc = __hello_packet_handler(client);
 
 	mdelay(10);
 
-	if (rc != 0x80 && rc != 0x88) {
+	if (rc != 0x80) {
 		rc = __fw_packet_handler(client);
 		if (rc < 0)
 			printk("[elan] %s, fw_packet_handler fail, rc = %d",
@@ -961,7 +913,7 @@ static void elan_ktf2k_clear_ram(struct i2c_client *client)
 			__func__);
 		return;
 	}
-	__elan_ktf2k_ts_poll(private_ts->client);
+
 	i2c_master_recv(private_ts->client, clear_cmd, 4);
 	printk(KERN_EMERG "%s, %2x,%2x,%2x,%2x \n", __func__, clear_cmd[0],
 	       clear_cmd[1], clear_cmd[2], clear_cmd[3]);
