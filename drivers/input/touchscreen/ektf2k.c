@@ -201,16 +201,9 @@ struct elan_ktf2k_ts_data {
 //[Arima Edison] ++
 static int elan_ktf2k_ts_parse_dt(struct device *,
 				  struct elan_ktf2k_i2c_platform_data *);
-static int elan_ktf2k_ts_set_mode_state(struct i2c_client *client, int mode);
-static int elan_ktf2k_ts_get_mode_state(struct i2c_client *client);
-static int elan_ktf2k_ts_set_talking_state(struct i2c_client *client, int mode);
-static int elan_ktf2k_ts_get_talking_state(struct i2c_client *client);
-static void elan_ktf2k_clear_ram(struct i2c_client *client);
-static int elan_ktf2k_set_scan_mode(struct i2c_client *client, int mode);
 //[Arima Edison]--
 
 static struct elan_ktf2k_ts_data *private_ts;
-static int elan_ktf2k_ts_setup(struct i2c_client *client);
 static int elan_ktf2k_ts_hw_reset(struct i2c_client *client);
 static int __fw_packet_handler(struct i2c_client *client);
 static int
@@ -966,7 +959,6 @@ static int elan_ktf2k_ts_set_power_state(struct i2c_client *client, int state)
 
 static int elan_ktf2k_ts_hw_reset(struct i2c_client *client)
 {
-	// touch_debug(DEBUG_INFO, "[ELAN] Start HW reset!\n");
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 0);
 	msleep(20);
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 1);
@@ -1044,47 +1036,29 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 				if (chip_type == 0x22) {
 					elan_ktf2k_set_scan_mode(
 					    private_ts->client, 0);
+				}
+
+				elan_ktf2k_ts_set_mode_state(private_ts->client,
+							     chip_mode_set);
+				if (elan_ktf2k_ts_get_mode_state(
+					private_ts->client) != chip_mode_set) {
 					elan_ktf2k_ts_set_mode_state(
 					    private_ts->client, chip_mode_set);
-					if (elan_ktf2k_ts_get_mode_state(
-						private_ts->client) !=
-					    chip_mode_set) {
-						elan_ktf2k_ts_set_mode_state(
-						    private_ts->client,
-						    chip_mode_set);
-					}
+				}
+				elan_ktf2k_ts_set_talking_state(
+				    private_ts->client, talking_mode_set);
+				if (elan_ktf2k_ts_get_talking_state(
+					private_ts->client) !=
+				    talking_mode_set) {
 					elan_ktf2k_ts_set_talking_state(
 					    private_ts->client,
 					    talking_mode_set);
-					if (elan_ktf2k_ts_get_talking_state(
-						private_ts->client) !=
-					    talking_mode_set) {
-						elan_ktf2k_ts_set_talking_state(
-						    private_ts->client,
-						    talking_mode_set);
-					}
+				}
+
+				if (chip_type == 0x22) {
 					msleep(10);
 					elan_ktf2k_set_scan_mode(
 					    private_ts->client, 1);
-				} else {
-					if (elan_ktf2k_ts_get_mode_state(
-						private_ts->client) !=
-					    chip_mode_set) {
-						elan_ktf2k_ts_set_mode_state(
-						    private_ts->client,
-						    chip_mode_set);
-					}
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-					if (elan_ktf2k_ts_get_talking_state(
-						private_ts->client) !=
-					    talking_mode_set) {
-						elan_ktf2k_ts_set_talking_state(
-						    private_ts->client,
-						    talking_mode_set);
-					}
-					msleep(10);
 				}
 				mutex_unlock(&private_ts->lock); // set lock
 			}
@@ -1189,38 +1163,26 @@ static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 
 		if (chip_type == 0x22) {
 			elan_ktf2k_set_scan_mode(private_ts->client, 0);
+		}
+		elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
+		if (elan_ktf2k_ts_get_mode_state(private_ts->client) !=
+		    chip_mode_set) {
 			elan_ktf2k_ts_set_mode_state(private_ts->client,
 						     chip_mode_set);
-			if (elan_ktf2k_ts_get_mode_state(private_ts->client) !=
-			    chip_mode_set) {
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-			}
+		}
+		elan_ktf2k_ts_set_talking_state(private_ts->client,
+						talking_mode_set);
+		if (elan_ktf2k_ts_get_talking_state(private_ts->client) !=
+		    talking_mode_set) {
 			elan_ktf2k_ts_set_talking_state(private_ts->client,
 							talking_mode_set);
-			if (elan_ktf2k_ts_get_talking_state(
-				private_ts->client) != talking_mode_set) {
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-			}
+		}
+
+		if (chip_type == 0x22) {
 			msleep(10);
 			elan_ktf2k_set_scan_mode(private_ts->client, 1);
-		} else {
-			elan_ktf2k_ts_set_mode_state(private_ts->client,
-						     chip_mode_set);
-			if (elan_ktf2k_ts_get_mode_state(private_ts->client) !=
-			    chip_mode_set) {
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-			}
-			elan_ktf2k_ts_set_talking_state(private_ts->client,
-							talking_mode_set);
-			if (elan_ktf2k_ts_get_talking_state(
-				private_ts->client) != talking_mode_set) {
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-			}
 		}
+
 		mutex_unlock(&private_ts->lock); // set lock
 	}
 
@@ -1758,25 +1720,25 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 	struct elan_ktf2k_ts_data *ts = i2c_get_clientdata(client);
-	// int rc = 0;
 
-	printk(KERN_EMERG "%s \n", __func__);
+	// if chip in the sleep mode, we do not need to do it
+	if (tp_sleep_status == 0)
+		return 0;
+
+	// The power_lock can be removed when firmware upgrade procedure will
+	// not be enter into suspend mode.
+	if (power_lock == 1)
+		return 0;
 
 	mutex_lock(&private_ts->lock); // set lock
-	if (tp_sleep_status == 1) {
-		if (power_lock == 0) /* The power_lock can be removed when
-					firmware upgrade procedure will not be
-					enter into suspend mode.  */
-		{
-			disable_irq(client->irq);
-			flush_work(&ts->work);
-			cancel_delayed_work_sync(&ts->check_work);
-			elan_ktf2k_ts_set_power_state(client,
-						      PWR_STATE_DEEP_SLEEP);
-		}
-		tp_sleep_status = 0;
-	}
+	disable_irq(client->irq);
+	flush_work(&ts->work);
+	cancel_delayed_work_sync(&ts->check_work);
+	elan_ktf2k_ts_set_power_state(client, PWR_STATE_DEEP_SLEEP);
 	mutex_unlock(&private_ts->lock); // release lock
+
+	tp_sleep_status = 0;
+
 	return 0;
 }
 
@@ -1784,72 +1746,46 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
 
-	printk(KERN_EMERG "%s \n", __func__);
+	// if chip in the resume mode, we do not need to do it
+	if (tp_sleep_status == 1)
+		return 0;
+
+	// The power_lock can be removed when firmware upgrade procedure will
+	// not be enter into resume mode.
+	if (power_lock == 1)
+		return 0;
 
 	mutex_lock(&private_ts->lock); // set lock
 
-	if (tp_sleep_status == 0) {
-		if (power_lock == 0) /* The power_lock can be removed when
-					firmware upgrade procedure will not be
-					enter into suspend mode.  */
-		{
-			gpio_direction_output(SYSTEM_RESET_PIN_SR, 0);
-			msleep(20);
-			gpio_direction_output(SYSTEM_RESET_PIN_SR, 1);
-			msleep(150);
+	elan_ktf2k_ts_hw_reset(private_ts->client);
 
-			if (__hello_packet_handler(private_ts->client) < 0) {
-				printk(
-				    "[elan] %s : hellopacket's receive fail \n",
-				    __func__);
-			}
+	if (__hello_packet_handler(private_ts->client) < 0)
+		printk("[elan] %s: hellopacket's receive fail \n", __func__);
 
-			if (chip_type == 0x22) {
-				elan_ktf2k_set_scan_mode(private_ts->client, 0);
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-				if (elan_ktf2k_ts_get_mode_state(
-					private_ts->client) != chip_mode_set) {
-					elan_ktf2k_ts_set_mode_state(
-					    private_ts->client, chip_mode_set);
-				}
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-				if (elan_ktf2k_ts_get_talking_state(
-					private_ts->client) !=
-				    talking_mode_set) {
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-				}
-				msleep(10);
-				elan_ktf2k_set_scan_mode(private_ts->client, 1);
-			} else {
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-				if (elan_ktf2k_ts_get_mode_state(
-					private_ts->client) != chip_mode_set) {
-					elan_ktf2k_ts_set_mode_state(
-					    private_ts->client, chip_mode_set);
-				}
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-				if (elan_ktf2k_ts_get_talking_state(
-					private_ts->client) !=
-				    talking_mode_set) {
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-				}
-			}
-
-			schedule_delayed_work(&private_ts->check_work,
-					      msecs_to_jiffies(2500));
-			enable_irq(client->irq);
-		}
-		tp_sleep_status = 1;
+	if (chip_type == 0x22) {
+		elan_ktf2k_set_scan_mode(private_ts->client, 0);
 	}
-	mutex_unlock(&private_ts->lock); // release lock
+	elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
+	if (elan_ktf2k_ts_get_mode_state(private_ts->client) != chip_mode_set) {
+		elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
+	}
+	elan_ktf2k_ts_set_talking_state(private_ts->client, talking_mode_set);
+	if (elan_ktf2k_ts_get_talking_state(private_ts->client) !=
+	    talking_mode_set) {
+		elan_ktf2k_ts_set_talking_state(private_ts->client,
+						talking_mode_set);
+	}
+	if (chip_type == 0x22) {
+		msleep(10);
+		elan_ktf2k_set_scan_mode(private_ts->client, 1);
+	}
+
+	schedule_delayed_work(&private_ts->check_work, msecs_to_jiffies(2500));
+	enable_irq(client->irq);
+
+	mutex_unlock(&private_ts->lock);
+
+	tp_sleep_status = 1;
 
 	return 0;
 }
