@@ -646,6 +646,7 @@ static int __hello_packet_handler(struct i2c_client *client)
 	if (rc < 0)
 		rc = i2c_master_recv(client, buf_recv, 8);
 	//[Arima Edison] do the receive it again--
+
 	printk("[elan] %s: hello packet %2x:%2X:%2x:%2x:%2x:%2x:%2x:%2x\n",
 	       __func__, buf_recv[0], buf_recv[1], buf_recv[2], buf_recv[3],
 	       buf_recv[4], buf_recv[5], buf_recv[6], buf_recv[7]);
@@ -755,10 +756,8 @@ static int elan_ktf2k_ts_setup(struct i2c_client *client)
 	int rc = 0;
 
 	elan_ktf2k_ts_hw_reset(client);
+
 	rc = __hello_packet_handler(client);
-
-	mdelay(10);
-
 	if (rc != 0x80) {
 		rc = __fw_packet_handler(client);
 		if (rc < 0)
@@ -1132,8 +1131,7 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 {
 
-	int do_tp_reset = 0;
-	int touch_retry = 0;
+	int rc = 0;
 
 	disable_irq(private_ts->client->irq);
 	flush_work(&private_ts->work);
@@ -1146,17 +1144,10 @@ static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 		return;
 	}
 
-	printk(KERN_EMERG "%s, chip may crash, we need to reset it \n",
-	       __func__);
+	elan_ktf2k_ts_hw_reset(private_ts->client);
 
-	touch_retry = 3;
-	do {
-		elan_ktf2k_ts_hw_reset(private_ts->client);
-		do_tp_reset = __hello_packet_handler(private_ts->client);
-		touch_retry--;
-	} while (do_tp_reset != 0 && touch_retry > 0);
-
-	if (do_tp_reset != 0) {
+	rc = __hello_packet_handler(private_ts->client);
+	if (rc != 0) {
 		printk(KERN_INFO "Receive hello package fail\n");
 	} else {
 		mutex_lock(&private_ts->lock); // set lock
@@ -1745,6 +1736,7 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 static int elan_ktf2k_ts_resume(struct device *dev)
 {
 	struct i2c_client *client = to_i2c_client(dev);
+	int rc = 0;
 
 	// if chip in the resume mode, we do not need to do it
 	if (tp_sleep_status == 1)
@@ -1759,7 +1751,8 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 
 	elan_ktf2k_ts_hw_reset(private_ts->client);
 
-	if (__hello_packet_handler(private_ts->client) < 0)
+	rc = __hello_packet_handler(private_ts->client);
+	if (rc < 0)
 		printk("[elan] %s: hellopacket's receive fail \n", __func__);
 
 	if (chip_type == 0x22) {
