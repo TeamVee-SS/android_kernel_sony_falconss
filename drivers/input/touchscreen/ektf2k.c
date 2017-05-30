@@ -304,7 +304,7 @@ static long elan_iap_ioctl(struct file *filp, unsigned int cmd,
 		gpio_set_value(SYSTEM_RESET_PIN_SR, 0);
 		msleep(20);
 		gpio_set_value(SYSTEM_RESET_PIN_SR, 1);
-		msleep(5);
+		msleep(20);
 		printk(KERN_EMERG "elan_iap_ioctl : IOCTL_RESET\n ");
 		break;
 	case IOCTL_IAP_MODE_LOCK:
@@ -828,7 +828,6 @@ static int elan_ktf2k_ts_set_mode_state(struct i2c_client *client, int mode)
 			__func__);
 		return -EINVAL;
 	}
-	msleep(1);
 
 	return 0;
 }
@@ -872,7 +871,6 @@ static int elan_ktf2k_ts_set_talking_state(struct i2c_client *client, int mode)
 			__func__);
 		return -EINVAL;
 	}
-	msleep(1);
 
 	return 0;
 }
@@ -941,7 +939,6 @@ static int elan_ktf2k_set_scan_mode(struct i2c_client *client, int mode)
 				__func__, mode);
 			return -EINVAL;
 		}
-		msleep(1);
 	}
 
 	return 0;
@@ -973,7 +970,8 @@ static int elan_ktf2k_ts_hw_reset(struct i2c_client *client)
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 0);
 	msleep(20);
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 1);
-	msleep(130);
+	msleep(150);
+
 	return 0;
 }
 
@@ -993,8 +991,6 @@ static int elan_ktf2k_ts_recv_data(struct i2c_client *client, uint8_t *buf,
 		mdelay(30);
 		return -1;
 	}
-
-	mdelay(1);
 
 	return rc;
 }
@@ -1349,6 +1345,7 @@ power_off:
 		regulator_disable(data->vcc_i2c);
 	}
 	msleep(50);
+
 	return 0;
 }
 
@@ -1536,6 +1533,7 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 			printk(KERN_EMERG "unable to request gpio [%d]\n",
 			       pdata->reset_gpio);
 		gpio_direction_output(pdata->reset_gpio, 1);
+		msleep(150);
 	}
 	//[Arima Ediosn] --
 	if (gpio_is_valid(pdata->hw_det_gpio)) {
@@ -1796,7 +1794,7 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 					enter into suspend mode.  */
 		{
 			gpio_direction_output(SYSTEM_RESET_PIN_SR, 0);
-			msleep(5);
+			msleep(20);
 			gpio_direction_output(SYSTEM_RESET_PIN_SR, 1);
 			msleep(150);
 
