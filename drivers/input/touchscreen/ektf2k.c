@@ -1721,10 +1721,11 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 	if (power_lock == 1)
 		return 0;
 
-	mutex_lock(&private_ts->lock); // set lock
 	disable_irq(client->irq);
 	flush_work(&ts->work);
 	cancel_delayed_work_sync(&ts->check_work);
+
+	mutex_lock(&private_ts->lock); // set lock
 	elan_ktf2k_ts_set_power_state(client, PWR_STATE_DEEP_SLEEP);
 	mutex_unlock(&private_ts->lock); // release lock
 
@@ -1747,13 +1748,13 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 	if (power_lock == 1)
 		return 0;
 
-	mutex_lock(&private_ts->lock); // set lock
-
 	elan_ktf2k_ts_hw_reset(private_ts->client);
 
 	rc = __hello_packet_handler(private_ts->client);
 	if (rc < 0)
 		printk("[elan] %s: hellopacket's receive fail \n", __func__);
+
+	mutex_lock(&private_ts->lock); // set lock
 
 	if (chip_type == 0x22) {
 		elan_ktf2k_set_scan_mode(private_ts->client, 0);
@@ -1773,10 +1774,10 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 		elan_ktf2k_set_scan_mode(private_ts->client, 1);
 	}
 
+	mutex_unlock(&private_ts->lock);
+
 	schedule_delayed_work(&private_ts->check_work, msecs_to_jiffies(2500));
 	enable_irq(client->irq);
-
-	mutex_unlock(&private_ts->lock);
 
 	tp_sleep_status = 1;
 
