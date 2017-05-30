@@ -22,7 +22,6 @@
  */
 
 #include <asm/ioctl.h>
-#include <linux/cdev.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/gpio.h>
@@ -30,15 +29,13 @@
 #include <linux/input.h>
 #include <linux/input/ektf2k.h>
 #include <linux/interrupt.h>
-#include <linux/jiffies.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
+#include <linux/of_gpio.h>
 #include <linux/platform_device.h>
 #include <linux/proc_fs.h>
-#include <linux/slab.h>
-#include <linux/switch.h>
+#include <linux/regulator/consumer.h>
 #include <linux/uaccess.h>
-#include <linux/wakelock.h>
 
 #if defined(CONFIG_FB)
 #include <linux/fb.h>
@@ -46,10 +43,6 @@
 #endif
 
 /*[Arima Edison] add ++*/
-#include <linux/mutex.h>
-#include <linux/of_gpio.h>
-#include <linux/regulator/consumer.h>
-
 // Analog voltage @2.7 V
 #define ELAN_VTG_MIN_UV 2850000
 #define ELAN_VTG_MAX_UV 3300000 // 33
@@ -135,14 +128,11 @@ int file_fops_addr = 0x15;
 /*++++i2c transfer end+++++++*/
 
 static int touch_panel_type;
-static unsigned short chip_reset_flag = 0;
+static int chip_reset_flag = 0;
 uint8_t ic_status = 0x00; // 0:OK 1:master fail 2:slave fail
 int update_progree = 0;
 uint8_t I2C_DATA[3] = {0x15, 0x20, 0x21}; /*I2C devices address*/ // 1218 modify
 int is_OldBootCode = 0;						  // 0:new 1:old
-
-static unsigned long chip_mode_set = 0;
-static unsigned long talking_mode_set = 0;
 
 /*The newest firmware, if update must be changed here*/
 static uint8_t file_fw_data_Truly_2127[] = {
@@ -183,7 +173,6 @@ struct elan_ktf2k_ts_data {
 			/*Arima Edison add++*/
 	struct regulator *vcc_ana;
 	struct regulator *vcc_i2c;
-	struct mutex lock;
 	/*Arima Edison add--*/
 	// Firmware Information
 	int fw_ver;
@@ -315,8 +304,6 @@ static long elan_iap_ioctl(struct file *filp, unsigned int cmd,
 			enable_irq(private_ts->client->irq);
 			printk(KERN_EMERG "IOCTL_IAP_MODE_UNLOCK\n");
 		}
-		schedule_delayed_work(&private_ts->check_work,
-				      msecs_to_jiffies(2500)); // 1218
 		break;
 	case IOCTL_CHECK_RECOVERY_MODE:
 		return RECOVERY;
@@ -647,10 +634,6 @@ static int __hello_packet_handler(struct i2c_client *client)
 		rc = i2c_master_recv(client, buf_recv, 8);
 	//[Arima Edison] do the receive it again--
 
-	printk("[elan] %s: hello packet %2x:%2X:%2x:%2x:%2x:%2x:%2x:%2x\n",
-	       __func__, buf_recv[0], buf_recv[1], buf_recv[2], buf_recv[3],
-	       buf_recv[4], buf_recv[5], buf_recv[6], buf_recv[7]);
-
 	if (buf_recv[0] == 0x55 && buf_recv[1] == 0x55 && buf_recv[2] == 0x80 &&
 	    buf_recv[3] == 0x80) {
 		if (buf_recv[6] == 0x04 && buf_recv[7] == 0x21)
@@ -792,107 +775,7 @@ static int elan_ktf2k_ts_rough_calibrate(struct i2c_client *client)
 	return 0;
 }
 
-//[Arima Edison] add to set or get different mode(charging and not charging)++
-/**54 56 01 01 while charging. **/ // for 2227e
-/** 54 56 00 01 while not charging**/
-
-/*0x54 0x5C 0x01 0x01  enable AC mode*/ // 2127e
-/* get 0x54 0x57 0x00 0x01 */
-/*0x54 0x5D 0x01 0x01 enable RF mode*/
-/**/
-
-static int elan_ktf2k_ts_set_mode_state(struct i2c_client *client, int mode)
-{
-	uint8_t cmd[] = {CMD_W_PKT, 0x56, 0x01, 0x01};
-
-	dev_dbg(&client->dev, "[elan] %s: enter\n", __func__);
-
-	if (chip_type == 0x21)
-		cmd[1] = 0x5C;
-
-	cmd[2] = mode;
-
-	printk(KERN_EMERG "%s [elan] dump cmd: %02x, %02x, %02x, %02x\n",
-	       __func__, cmd[0], cmd[1], cmd[2], cmd[3]);
-
-	if ((i2c_master_send(client, cmd, sizeof(cmd))) != sizeof(cmd)) {
-		dev_err(&client->dev, "[elan] %s: i2c_master_send failed\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-/* 53 56 00 01*/
-static int elan_ktf2k_ts_get_mode_state(struct i2c_client *client)
-{
-	int rc = 0;
-	uint8_t cmd[] = {CMD_R_PKT, 0x56, 0x00, 0x01};
-	uint8_t buf[4] = {0}, mode_state = 0;
-
-	if (chip_type == 0x21)
-		cmd[1] = 0x5C;
-
-	rc = elan_ktf2k_ts_get_data(client, cmd, buf, 4);
-	if (rc)
-		return rc;
-
-	mode_state =
-	    buf[2]; // third parameter is the one to distinquish the mode
-	printk(KERN_EMERG "[elan] dump repsponse: %0x\n", mode_state);
-
-	return mode_state;
-}
-
-static int elan_ktf2k_ts_set_talking_state(struct i2c_client *client, int mode)
-{
-	uint8_t cmd[] = {0x54, 0x57, 0x01, 0x01};
-
-	dev_dbg(&client->dev, "[elan] %s: enter\n", __func__);
-
-	if (chip_type == 0x21)
-		cmd[1] = 0x5D;
-
-	cmd[2] = mode;
-
-	printk(KERN_EMERG "[elan] dump cmd: %02x, %02x, %02x, %02x\n", cmd[0],
-	       cmd[1], cmd[2], cmd[3]);
-
-	if ((i2c_master_send(client, cmd, sizeof(cmd))) != sizeof(cmd)) {
-		dev_err(&client->dev, "[elan] %s: i2c_master_send failed\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	return 0;
-}
-
-static int elan_ktf2k_ts_get_talking_state(struct i2c_client *client)
-{
-	int rc = 0;
-	uint8_t cmd[] = {0x53, 0x57, 0x00, 0x01};
-	uint8_t buf[4] = {0}, mode_state = 0;
-
-	if (chip_type == 0x21)
-		cmd[1] = 0x5D;
-
-	printk(KERN_EMERG "%s : [elan] dump cmd: %02x, %02x, %02x, %02x\n",
-	       __func__, cmd[0], cmd[1], cmd[2], cmd[3]);
-
-	rc = elan_ktf2k_ts_get_data(client, cmd, buf, 4);
-	if (rc)
-		return rc;
-
-	mode_state =
-	    buf[2]; // third parameter is the one to distinquish the mode
-	printk(KERN_EMERG "[elan] dump repsponse: %0x\n", mode_state);
-
-	return mode_state;
-}
-//[Arima Edison] add to set different mode(charging and not charging)--
-
 //[Arima Edison] add ram clear command++
-
 static void elan_ktf2k_clear_ram(struct i2c_client *client)
 {
 	uint8_t clear_cmd[] = {0x53, 0x0A, 0x00, 0x01};
@@ -909,32 +792,6 @@ static void elan_ktf2k_clear_ram(struct i2c_client *client)
 	       clear_cmd[1], clear_cmd[2], clear_cmd[3]);
 }
 //[Arima Edison] add ram clear command--
-
-static int elan_ktf2k_set_scan_mode(struct i2c_client *client, int mode)
-{
-	uint8_t stop_cmd[] = {0x54, 0x9F, 0x01, 0x00, 0x00, 0x01};
-	uint8_t start_cmd[] = {0x54, 0x9F, 0x00, 0x00, 0x00, 0x01};
-
-	if (mode) {
-		if ((i2c_master_send(client, start_cmd, sizeof(start_cmd))) !=
-		    sizeof(start_cmd)) {
-			dev_err(&client->dev,
-				"[elan] %s: i2c_master_send failed, mode:%d\n",
-				__func__, mode);
-			return -EINVAL;
-		}
-	} else {
-		if ((i2c_master_send(client, stop_cmd, sizeof(stop_cmd))) !=
-		    sizeof(stop_cmd)) {
-			dev_err(&client->dev,
-				"[elan] %s: i2c_master_send failed, mode:%d\n",
-				__func__, mode);
-			return -EINVAL;
-		}
-	}
-
-	return 0;
-}
 
 static int elan_ktf2k_ts_set_power_state(struct i2c_client *client, int state)
 {
@@ -1025,51 +882,9 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 
 	switch (buf[0]) {
 	case 0x78: // chip may reset due to watch dog
-		break;
+	case 0x66: // calibration packet type
 	case 0x55: // chip may reset due to watch dog
-		if (chip_type == 0x22) {
-			if (buf[0] == 0x55 && buf[1] == 0x55 &&
-			    buf[2] == 0x55 && buf[3] == 0x55) {
-				mutex_lock(&private_ts->lock); // set lock
-
-				if (chip_type == 0x22) {
-					elan_ktf2k_set_scan_mode(
-					    private_ts->client, 0);
-				}
-
-				elan_ktf2k_ts_set_mode_state(private_ts->client,
-							     chip_mode_set);
-				if (elan_ktf2k_ts_get_mode_state(
-					private_ts->client) != chip_mode_set) {
-					elan_ktf2k_ts_set_mode_state(
-					    private_ts->client, chip_mode_set);
-				}
-				elan_ktf2k_ts_set_talking_state(
-				    private_ts->client, talking_mode_set);
-				if (elan_ktf2k_ts_get_talking_state(
-					private_ts->client) !=
-				    talking_mode_set) {
-					elan_ktf2k_ts_set_talking_state(
-					    private_ts->client,
-					    talking_mode_set);
-				}
-
-				if (chip_type == 0x22) {
-					msleep(10);
-					elan_ktf2k_set_scan_mode(
-					    private_ts->client, 1);
-				}
-				mutex_unlock(&private_ts->lock); // set lock
-			}
-		}
-		printk(KERN_EMERG "!!!!!!!tp chip reset event may happen \n");
-		break;
-	case 0x66:
-		if (buf[0] == 0x66 && buf[1] == 0x66 && buf[2] == 0x66 &&
-		    buf[3] == 0x66)
-			dev_dbg(&client->dev, "calibration packet\n");
-		else
-			dev_dbg(&client->dev, "unknow packet type\n");
+	case 0x34: // removed talking set mode
 		break;
 	case MTK_FINGERS_PKT:
 	case TWO_FINGERS_PKT:
@@ -1138,8 +953,6 @@ static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 
 	if (chip_reset_flag == 0) {
 		chip_reset_flag = 1;
-		schedule_delayed_work(&private_ts->check_work,
-				      msecs_to_jiffies(2500));
 		enable_irq(private_ts->client->irq);
 		return;
 	}
@@ -1149,35 +962,8 @@ static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 	rc = __hello_packet_handler(private_ts->client);
 	if (rc != 0) {
 		printk(KERN_INFO "Receive hello package fail\n");
-	} else {
-		mutex_lock(&private_ts->lock); // set lock
-
-		if (chip_type == 0x22) {
-			elan_ktf2k_set_scan_mode(private_ts->client, 0);
-		}
-		elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
-		if (elan_ktf2k_ts_get_mode_state(private_ts->client) !=
-		    chip_mode_set) {
-			elan_ktf2k_ts_set_mode_state(private_ts->client,
-						     chip_mode_set);
-		}
-		elan_ktf2k_ts_set_talking_state(private_ts->client,
-						talking_mode_set);
-		if (elan_ktf2k_ts_get_talking_state(private_ts->client) !=
-		    talking_mode_set) {
-			elan_ktf2k_ts_set_talking_state(private_ts->client,
-							talking_mode_set);
-		}
-
-		if (chip_type == 0x22) {
-			msleep(10);
-			elan_ktf2k_set_scan_mode(private_ts->client, 1);
-		}
-
-		mutex_unlock(&private_ts->lock); // set lock
 	}
 
-	schedule_delayed_work(&private_ts->check_work, msecs_to_jiffies(2500));
 	enable_irq(private_ts->client->irq);
 }
 
@@ -1453,7 +1239,6 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 	//[Arima Edison] add ++
 	INIT_DELAYED_WORK(&ts->check_work,
 			  elan_ktf2k_ts_check_work_func); // reset if check hang
-	mutex_init(&ts->lock);
 	//[Arima Edison] add --
 
 	ts->client = client;
@@ -1650,8 +1435,9 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 		elan_ktf2k_clear_ram(private_ts->client);
 
 	tp_sleep_status = 1;
+
 	elan_ktf2k_ts_register_interrupt(ts->client);
-	schedule_delayed_work(&private_ts->check_work, msecs_to_jiffies(2500));
+
 	printk(KERN_EMERG "%s finish \n", __func__);
 
 	return 0;
@@ -1724,10 +1510,7 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 	disable_irq(client->irq);
 	flush_work(&ts->work);
 	cancel_delayed_work_sync(&ts->check_work);
-
-	mutex_lock(&private_ts->lock); // set lock
 	elan_ktf2k_ts_set_power_state(client, PWR_STATE_DEEP_SLEEP);
-	mutex_unlock(&private_ts->lock); // release lock
 
 	tp_sleep_status = 0;
 
@@ -1754,29 +1537,6 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 	if (rc < 0)
 		printk("[elan] %s: hellopacket's receive fail \n", __func__);
 
-	mutex_lock(&private_ts->lock); // set lock
-
-	if (chip_type == 0x22) {
-		elan_ktf2k_set_scan_mode(private_ts->client, 0);
-	}
-	elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
-	if (elan_ktf2k_ts_get_mode_state(private_ts->client) != chip_mode_set) {
-		elan_ktf2k_ts_set_mode_state(private_ts->client, chip_mode_set);
-	}
-	elan_ktf2k_ts_set_talking_state(private_ts->client, talking_mode_set);
-	if (elan_ktf2k_ts_get_talking_state(private_ts->client) !=
-	    talking_mode_set) {
-		elan_ktf2k_ts_set_talking_state(private_ts->client,
-						talking_mode_set);
-	}
-	if (chip_type == 0x22) {
-		msleep(10);
-		elan_ktf2k_set_scan_mode(private_ts->client, 1);
-	}
-
-	mutex_unlock(&private_ts->lock);
-
-	schedule_delayed_work(&private_ts->check_work, msecs_to_jiffies(2500));
 	enable_irq(client->irq);
 
 	tp_sleep_status = 1;
