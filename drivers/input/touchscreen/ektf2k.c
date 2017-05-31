@@ -818,7 +818,7 @@ static int elan_ktf2k_ts_hw_reset(struct i2c_client *client)
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 0);
 	msleep(20);
 	gpio_direction_output(SYSTEM_RESET_PIN_SR, 1);
-	msleep(150);
+	msleep(130);
 
 	return 0;
 }
@@ -1271,7 +1271,6 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 			printk(KERN_EMERG "unable to request gpio [%d]\n",
 			       pdata->reset_gpio);
 		gpio_direction_output(pdata->reset_gpio, 1);
-		msleep(150);
 	}
 	//[Arima Ediosn] --
 	if (gpio_is_valid(pdata->hw_det_gpio)) {
