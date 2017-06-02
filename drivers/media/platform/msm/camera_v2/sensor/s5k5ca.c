@@ -51,9 +51,7 @@ static struct msm_sensor_power_setting s5k5ca_power_setting[] = {
     },
 };
 static struct msm_camera_i2c_reg_conf s5k5ca_recommend_settings[] = {
-//#include "s5k5ca_yuv_mcnex_MCLK_19.2MHz.h"
 #include "s5k5ca_yuv_mcnex_PVIMask_0x0012.h"
-    //#include "s5k5ca_yuv_mcnex.h"
 };
 #if 0
 static struct msm_camera_i2c_reg_conf s5k5ca_start_settings[] = {
