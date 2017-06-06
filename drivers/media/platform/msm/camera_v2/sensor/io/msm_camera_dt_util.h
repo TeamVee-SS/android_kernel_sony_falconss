@@ -29,7 +29,8 @@ int msm_sensor_get_dt_csi_data(struct device_node *of_node,
 
 int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 	struct camera_vreg_t *cam_vreg, int num_vreg,
-	struct msm_camera_power_ctrl_t *power_info);
+	struct msm_sensor_power_setting **power_setting,
+	uint16_t *power_setting_size);
 
 int msm_camera_get_dt_gpio_req_tbl(struct device_node *of_node,
 	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
