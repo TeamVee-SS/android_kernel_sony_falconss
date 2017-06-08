@@ -1198,7 +1198,6 @@ error_sd_register:
 
 static const struct of_device_id msm_ispif_dt_match[] = {
 	{.compatible = "qcom,ispif"},
-	{}
 };
 
 MODULE_DEVICE_TABLE(of, msm_ispif_dt_match);
