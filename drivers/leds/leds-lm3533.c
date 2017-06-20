@@ -13,7 +13,6 @@
 #include <linux/leds-lm3533.h>
 #include <linux/leds.h>
 #include <linux/module.h>
-#include <linux/mutex.h>
 #include <linux/slab.h>
 #include <linux/time.h>
 #include <linux/workqueue.h>
@@ -102,7 +101,6 @@ struct lm3533_led_data {
 };
 
 struct lm3533_data {
-	struct mutex lock;
 	struct i2c_client *client;
 	struct lm3533_led_data leds[LM3533_LEDS_MAX];
 };
@@ -938,8 +936,6 @@ static int lm3533_probe(struct i2c_client *client,
 	data->client = client;
 	lm3533_client = client;
 	i2c_set_clientdata(client, data);
-
-	mutex_init(&data->lock);
 
 	err = lm3533_configure(client, data, lm3533_pdata);
 
