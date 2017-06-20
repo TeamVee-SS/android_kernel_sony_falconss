@@ -891,39 +891,31 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 	case TEN_FINGERS_PKT:
 		input_report_key(idev, BTN_TOUCH, 1);
 
-		if (num == 0) {
-		} else {
+		dev_dbg(&client->dev, "[elan] %d fingers\n", num);
+		input_report_key(idev, BTN_TOUCH, 1);
+		for (i = 0; i < finger_num; i++) {
+			if ((fbits & 0x01)) {
+				elan_ktf2k_ts_parse_xy(&buf[idx], &x, &y);
 
-			dev_dbg(&client->dev, "[elan] %d fingers\n", num);
-			input_report_key(idev, BTN_TOUCH, 1);
-			for (i = 0; i < finger_num; i++) {
-				if ((fbits & 0x01)) {
-					elan_ktf2k_ts_parse_xy(&buf[idx], &x,
-							       &y);
+				x = x * (LCM_X_RESOLUTION) / X_RESOLUTION;
+				y = y * (LCM_Y_RESOLUTION) / Y_RESOLUTION;
 
-					x = x * (LCM_X_RESOLUTION) /
-					    X_RESOLUTION;
-					y = y * (LCM_Y_RESOLUTION) /
-					    Y_RESOLUTION;
-
-					if (!((x <= 0) || (y <= 0) ||
-					      (x >= LCM_X_RESOLUTION) ||
-					      (y >= LCM_Y_RESOLUTION))) {
-						input_report_abs(
-						    idev, ABS_MT_TOUCH_MAJOR,
-						    8);
-						input_report_abs(
-						    idev, ABS_MT_POSITION_X, x);
-						input_report_abs(
-						    idev, ABS_MT_POSITION_Y, y);
-						input_mt_sync(idev);
-						reported++;
-					} // end if border
-				}	 // end if finger status
-				fbits = fbits >> 1;
-				idx += 3;
-			} // end for
-		}
+				if (!((x <= 0) || (y <= 0) ||
+				      (x >= LCM_X_RESOLUTION) ||
+				      (y >= LCM_Y_RESOLUTION))) {
+					input_report_abs(idev,
+							 ABS_MT_TOUCH_MAJOR, 8);
+					input_report_abs(idev,
+							 ABS_MT_POSITION_X, x);
+					input_report_abs(idev,
+							 ABS_MT_POSITION_Y, y);
+					input_mt_sync(idev);
+					reported++;
+				} // end if border
+			}	 // end if finger status
+			fbits = fbits >> 1;
+			idx += 3;
+		} // end for
 
 		if (reported)
 			input_sync(idev);
