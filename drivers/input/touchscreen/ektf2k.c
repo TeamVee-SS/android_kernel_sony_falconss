@@ -889,10 +889,7 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 	case TWO_FINGERS_PKT:
 	case FIVE_FINGERS_PKT:
 	case TEN_FINGERS_PKT:
-		input_report_key(idev, BTN_TOUCH, 1);
-
 		dev_dbg(&client->dev, "[elan] %d fingers\n", num);
-		input_report_key(idev, BTN_TOUCH, 1);
 		for (i = 0; i < finger_num; i++) {
 			if ((fbits & 0x01)) {
 				elan_ktf2k_ts_parse_xy(&buf[idx], &x, &y);
@@ -909,6 +906,7 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 							 ABS_MT_POSITION_X, x);
 					input_report_abs(idev,
 							 ABS_MT_POSITION_Y, y);
+					input_report_key(idev, BTN_TOUCH, 1);
 					input_mt_sync(idev);
 					reported++;
 				} // end if border
