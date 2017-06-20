@@ -619,7 +619,6 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	if (BANK_ENABLE != BANK_ENABLE_ORIGINAL) {
 		err = i2c_smbus_write_byte_data(
 		    led->client, LM3533_CONTROL_ENABLE, BANK_ENABLE);
-		msleep(5);
 		if (err)
 			printk(KERN_EMERG "bank set error \n");
 #ifdef DEBUG
@@ -912,9 +911,9 @@ static int lm3533_probe(struct i2c_client *client,
 	if (i2c_smbus_read_byte_data(
 		client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION1) != 0x92) {
 		gpio_set_value(18, 0); // HW init again
-		msleep(10);
+		msleep(20);
 		gpio_set_value(18, 1);
-		msleep(5);
+		msleep(20);
 
 		if (i2c_smbus_read_byte_data(
 			client, LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION1) !=
