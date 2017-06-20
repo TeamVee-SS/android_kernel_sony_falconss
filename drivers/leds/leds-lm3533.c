@@ -20,10 +20,6 @@
 #define LM3533_DRIVER_NAME "lm3533_leds"
 static struct i2c_client *lm3533_client = NULL;
 static struct workqueue_struct *LED_WorkQueue = NULL;
-// 20140110 tracy add for led flash once when bluetooth connected++
-static struct workqueue_struct *bt_connected_wq;
-static struct delayed_work BT_connected;
-// 20140110 tracy add for led flash once when bluetooth connected--
 static u8 lcm_has_on;
 static int keep_backlight_brightness = 255;
 static u8 backlight_has_on;
@@ -171,10 +167,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	}
 	// 20131224 tracy add for album/walkman led on time --
 	else if (fade_time == 200) {
-		// 20140110 tracy add for led flash once when bluetooth
-		// connected++
-		queue_delayed_work(bt_connected_wq, &BT_connected,
-				   msecs_to_jiffies(5500));
 		fade_data[0] = 0x00;
 		fade_data[1] = 0x52;
 		fade_data[2] = 0x00;
@@ -190,9 +182,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 		i2c_smbus_write_i2c_block_data(lm3533_client,
 					       LM3533_PATTERN_GENERATOR_3_DELAY,
 					       6, fade_data);
-
-		// 20140110 tracy add for led flash once when bluetooth
-		// connected--
 	} else if (fade_time == 300) {
 		fade_data[0] = 0x00;
 		fade_data[1] = 0x00;
@@ -694,21 +683,7 @@ static void lm3533_led_work(struct work_struct *work)
 	else if (led->id == 1)
 		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
 }
-// 20140110 tracy add for led flash once when bluetooth connected++
-static void lm3533_led_btconnected_work(struct work_struct *work)
-{
-	u8 data[3];
 
-	data[0] = brightness_table[(0x00) & 255];
-	data[1] = brightness_table[(0x00) & 255];
-	data[2] = brightness_table[(0x00) & 255];
-	i2c_smbus_write_i2c_block_data(lm3533_client,
-				       LM3533_BRIGHTNESS_REGISTER_C, 3, data);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0x00);
-}
-// 20140110 tracy add for led flash once when bluetooth connected--
 void lm3533_backlight_control(unsigned long brightness)
 {
 
@@ -820,13 +795,6 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		led->ldev.brightness_set = lm3533_led_set_brightness;
 
 		INIT_DELAYED_WORK(&led->thread, lm3533_led_work);
-		INIT_DELAYED_WORK(&BT_connected,
-				  lm3533_led_btconnected_work); // 20140110
-								// tracy add for
-								// led flash
-								// once when
-								// bluetooth
-								// connected++
 		err = led_classdev_register(&client->dev, &led->ldev);
 		if (err < 0) {
 			dev_err(&client->dev, "couldn't register LED %s\n",
@@ -928,10 +896,6 @@ static int lm3533_probe(struct i2c_client *client,
 		return -ENOMEM;
 
 	LED_WorkQueue = create_singlethread_workqueue(LM3533_DRIVER_NAME);
-	bt_connected_wq = create_singlethread_workqueue(
-	    "bt_connected_wq"); // 20140110 tracy add for led flash once when
-				// bluetooth connected++
-
 	data->client = client;
 	lm3533_client = client;
 	i2c_set_clientdata(client, data);
@@ -962,8 +926,6 @@ static int lm3533_remove(struct i2c_client *client)
 		cancel_work_sync(&data->leds[i].thread_set_keep.work);
 	}
 
-	destroy_workqueue(bt_connected_wq); // 20140115 tracy add for led block
-					    // after bluetooth connected
 	kfree(data);
 
 	return 0;
