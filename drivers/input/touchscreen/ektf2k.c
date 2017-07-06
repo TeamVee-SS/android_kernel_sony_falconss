@@ -884,7 +884,7 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 	case 0x78: // chip may reset due to watch dog
 	case 0x66: // calibration packet type
 	case 0x55: // chip may reset due to watch dog
-	case 52: // removed talking set mode
+	case 0x34: // removed talking set mode
 		break;
 	case MTK_FINGERS_PKT:
 	case TWO_FINGERS_PKT:
