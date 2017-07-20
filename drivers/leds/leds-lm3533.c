@@ -23,7 +23,7 @@ static struct workqueue_struct *LED_WorkQueue = NULL;
 static u8 lcm_has_on;
 static int keep_backlight_brightness = 255;
 static u8 backlight_has_on;
-static int log_flag_setting = 0; // 20131125 tracy disable the log
+static int log_flag_setting = 0; // Keep log disabled
 
 u8 brightness_table[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
@@ -93,7 +93,6 @@ struct lm3533_led_data {
 	struct delayed_work thread;
 	struct delayed_work thread_register_keep; // use for keep light timer
 	struct delayed_work thread_set_keep;
-	unsigned int debug_flag;
 };
 
 struct lm3533_data {
@@ -115,10 +114,10 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	u8 fade_data[6];
 	if (strict_strtoul(buf, 10, &fade_time))
 		return -EINVAL;
-	if (log_flag_setting) {
-		printk(KERN_EMERG "%s: %s, %lu \n", __func__, led_cdev->name,
-		       fade_time);
-	}
+
+	if (log_flag_setting)
+		pr_info("%s: %s: %lu\n", __func__, led_cdev->name, fade_time);
+
 	led->fade_time = fade_time;
 	i2c_smbus_write_byte_data(lm3533_client, LM3533_CONTROL_ENABLE,
 				  0x1D); // 20130930 tracy change from 0x1c to
@@ -232,10 +231,10 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 					       6, fade_data);
 	} else {
 		// Arima alvin disable LED dimming +++
-		if (log_flag_setting) {
-			printk(KERN_INFO "%s: dimming disable: %lu \n",
-			       __func__, fade_time);
-		}
+		if (log_flag_setting)
+			pr_info("%s: dimming disable: %lu\n", __func__,
+				fade_time);
+
 		i2c_smbus_write_byte_data(
 		    lm3533_client,
 		    LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL, 0x00);
@@ -254,10 +253,10 @@ static ssize_t lm3533_runtime_fade_time_write(struct device *dev,
 
 	if (strict_strtoul(buf, 10, &runtime_fade_time))
 		return -EINVAL;
-	if (log_flag_setting) {
-		printk(KERN_EMERG "%s: %s, %lu \n", __func__, led_cdev->name,
-		       runtime_fade_time);
-	}
+
+	if (log_flag_setting)
+		pr_info("%s: %s: %lu\n", __func__, led_cdev->name,
+			runtime_fade_time);
 
 	return count;
 }
@@ -362,10 +361,9 @@ static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 
 	led->lm3533_rgb_brightness = rgb_brightness;
 
-	if (log_flag_setting) {
-		printk(KERN_EMERG "%s: %s, %lu \n", __func__, led_cdev->name,
-		       rgb_brightness);
-	}
+	if (log_flag_setting)
+		pr_info("%s: %s: %lu\n", __func__, led_cdev->name,
+			rgb_brightness);
 
 	/*++this function is for keep on time ++*/
 
@@ -382,11 +380,10 @@ static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 	i2c_smbus_read_i2c_block_data(
 	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
 
-	if (log_flag_setting) {
-		printk(KERN_EMERG
-		       "sns_data[0] = %d , sns_data[1] = %d , sns_data[2]=%d  ",
-		       sns_data[0], sns_data[1], sns_data[2]);
-	}
+	if (log_flag_setting)
+		pr_info("%s: sns_data[0] = [%d], sns_data[1] = [%d], "
+			"sns_data[2] = [%d]\n",
+			__func__, sns_data[0], sns_data[1], sns_data[2]);
 
 	queue_delayed_work(LED_WorkQueue, &led->thread, msecs_to_jiffies(10));
 
@@ -409,10 +406,9 @@ static ssize_t lm3533_charger_brightness_write(struct device *dev,
 
 	if (led->id == 2) {
 		led->lm3533_led_brightness = charger_brightness;
-		if (log_flag_setting) {
-			printk(KERN_EMERG "%s: %s, %lu \n", __func__,
-			       led_cdev->name, charger_brightness);
-		}
+		if (log_flag_setting)
+			pr_info("%s: %s: %lu\n", __func__, led_cdev->name,
+				charger_brightness);
 		lm3533_led_set(led, led->lm3533_led_brightness);
 	}
 
@@ -423,24 +419,29 @@ static ssize_t lm3533_debug_flag_write(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t count)
 {
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	struct lm3533_led_data *led =
-	    container_of(led_cdev, struct lm3533_led_data, ldev);
 	static unsigned long debug_flag;
 
 	if (strict_strtoul(buf, 10, &debug_flag))
 		return -EINVAL;
 
-	printk(KERN_EMERG "%s: Enter LED Debug Mode \n", __func__);
-
 	log_flag_setting = ((debug_flag == 1) ? 1 : 0);
 
-	led->debug_flag = debug_flag;
+	pr_info("%s: LED Debug Mode [%s]\n", __func__,
+		((log_flag_setting == 1) ? "ON" : "OFF"));
 
 	return count;
 }
+
+static ssize_t lm3533_debug_flag_read(struct device *dev,
+				      struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "LED Debug Mode [%s]\n",
+		       ((log_flag_setting) ? "ON" : "OFF"));
+}
+
 // 20130717 tracy modify unused led code++
-static DEVICE_ATTR(debug_flag, 0644, NULL, lm3533_debug_flag_write);
+static DEVICE_ATTR(debug_flag, 0644, lm3533_debug_flag_read,
+		   lm3533_debug_flag_write);
 static DEVICE_ATTR(fade_time, 0644, NULL, lm3533_fade_time_write);
 static DEVICE_ATTR(runtime_fade_time, 0644, NULL,
 		   lm3533_runtime_fade_time_write);
@@ -548,15 +549,13 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 		if (brightness) {
 			BANK_ENABLE = BANK_ENABLE | 33; // 100001
 
-			if (err)
-				printk(KERN_EMERG "notification on error \n");
-			if (log_flag_setting) {
-				printk(KERN_EMERG "notification on \n");
-			}
+			if (log_flag_setting)
+				pr_info("%s: notification on\n", __func__);
 		} else {
 			BANK_ENABLE = BANK_ENABLE & 31; // 011111
-			if (err)
-				printk(KERN_EMERG "notification off error \n");
+
+			if (log_flag_setting)
+				pr_info("%s: notification off\n", __func__);
 		}
 		break;
 
@@ -566,7 +565,8 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 		if (led->lm3533_led_brightness) {
 			if (!brightness_temp) {
 				brightness_temp = 1;
-				printk(KERN_EMERG "backlight on \n");
+				if (log_flag_setting)
+					pr_info("%s: backlight on\n", __func__);
 			}
 			i2c_smbus_write_byte_data(
 			    lm3533_client, LM3533_RUN_TIME_RAMP_RATES,
@@ -577,29 +577,28 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 			    brightness_table
 				[led->lm3533_led_brightness]); // backlight
 							       // offset
-			if (err)
-				printk(KERN_EMERG "backlight set error %d",
-				       err);
 		} else {
 			/*by major, ignore the first one*/
 			if (1 == ignoreFirstBacklightOff_event) {
 				ignoreFirstBacklightOff_event = 0;
 
-				printk(KERN_EMERG
-				       "backlight off 1st  ignored\n");
-
+				pr_info("%s: backlight off 1st ignored\n",
+					__func__);
 				break;
 			}
 			brightness_temp = 0;
 
 			err = i2c_smbus_write_byte_data(
 			    led->client, LM3533_BRIGHTNESS_REGISTER_A, 0x00);
-			if (err) {
-				printk(KERN_EMERG "backlight off error %d \n",
-				       err);
-			}
-			printk(KERN_EMERG "backlight off \n");
+			if (log_flag_setting)
+				pr_info("%s: backlight off\n", __func__);
 		}
+		if (err) {
+			pr_err("%s: backlight %s error [%d]", __func__,
+			       ((led->lm3533_led_brightness) ? "set" : "off"),
+			       err);
+		}
+
 		break;
 	default:
 		break;
@@ -608,20 +607,18 @@ static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 	if (BANK_ENABLE != BANK_ENABLE_ORIGINAL) {
 		err = i2c_smbus_write_byte_data(
 		    led->client, LM3533_CONTROL_ENABLE, BANK_ENABLE);
+
 		if (err)
-			printk(KERN_EMERG "bank set error \n");
-#ifdef DEBUG
-		if (log_flag_setting) {
-			printk(KERN_EMERG "BANK_ENABLE = 0x%x \n", BANK_ENABLE);
-		}
-#endif
+			pr_err("%s: bank set error [%d]\n", __func__, err);
+		if (log_flag_setting)
+			pr_info("%s: BANK_ENABLE = 0x%x\n", __func__,
+				BANK_ENABLE);
 	}
 	BANK_ENABLE_ORIGINAL = BANK_ENABLE;
 
-#ifdef DEBUG
-	printk(KERN_EMERG "%s: %s,  id:%d brightness:%lu \n", __func__,
-	       led->ldev.name, id, brightness);
-#endif
+	if (log_flag_setting)
+		pr_info("%s: %s: id = [%d], brightness = [%lu]\n", __func__,
+			led->ldev.name, id, brightness);
 
 	return err;
 }
@@ -633,10 +630,9 @@ static void lm3533_led_set_brightness(struct led_classdev *led_cdev,
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
 	// 20130722 tracy add for notification led++
 	if (led->id == 2)
-		if (log_flag_setting) {
-			printk(KERN_EMERG "%s: %s, %d\n", __func__,
-			       led_cdev->name, brightness);
-		}
+		if (log_flag_setting)
+			pr_info("%s: %s: %d\n", __func__, led_cdev->name,
+				brightness);
 
 	led->lm3533_led_brightness = brightness;
 
