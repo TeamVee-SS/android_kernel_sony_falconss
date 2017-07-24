@@ -90,6 +90,7 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
 	static unsigned long fade_time;
 	u8 fade_data[6];
+	int unsupported_fade_time;
 
 	if (strict_strtoul(buf, 10, &fade_time))
 		return -EINVAL;
@@ -102,38 +103,13 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	i2c_smbus_write_byte_data(
 	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
 	    0x3F);
-	if (fade_time == 500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x00;
+	if (fade_time == 100) {
+		fade_data[0] = 0x4B;
+		fade_data[1] = 0x4B;
+		fade_data[2] = 0x07;
 		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 3500) {
-		fade_data[0] = 0x00;
-		fade_data[1] = 0x00;
-		fade_data[2] = 0x58;
-		fade_data[3] = 0x00;
-		fade_data[4] = 0x02;
-		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
+		fade_data[4] = 0x00;
+		fade_data[5] = 0x00;
 	} else if (fade_time == 200) {
 		fade_data[0] = 0x00;
 		fade_data[1] = 0x52;
@@ -141,15 +117,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 		fade_data[3] = 0x00;
 		fade_data[4] = 0x01;
 		fade_data[5] = 0x04;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
 	} else if (fade_time == 300) {
 		fade_data[0] = 0x00;
 		fade_data[1] = 0x00;
@@ -157,15 +124,13 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 		fade_data[3] = 0x00;
 		fade_data[4] = 0x01;
 		fade_data[5] = 0x03;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
+	} else if (fade_time == 500) {
+		fade_data[0] = 0x00;
+		fade_data[1] = 0x00;
+		fade_data[2] = 0x00;
+		fade_data[3] = 0x00;
+		fade_data[4] = 0x02;
+		fade_data[5] = 0x03;
 	} else if (fade_time == 625) {
 		fade_data[0] = 0x00;
 		fade_data[1] = 0x00;
@@ -173,32 +138,18 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 		fade_data[3] = 0x00;
 		fade_data[4] = 0x02;
 		fade_data[5] = 0x02;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
-	} else if (fade_time == 100) {
-		fade_data[0] = 0x4B;
-		fade_data[1] = 0x4B;
-		fade_data[2] = 0x07;
+	} else if (fade_time == 3500) {
+		fade_data[0] = 0x00;
+		fade_data[1] = 0x00;
+		fade_data[2] = 0x58;
 		fade_data[3] = 0x00;
-		fade_data[4] = 0x00;
-		fade_data[5] = 0x00;
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_1_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_2_DELAY,
-					       6, fade_data);
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_PATTERN_GENERATOR_3_DELAY,
-					       6, fade_data);
+		fade_data[4] = 0x02;
+		fade_data[5] = 0x03;
 	} else {
+		unsupported_fade_time = 1;
+	}
+
+	if (unsupported_fade_time) {
 		if (log_flag_setting)
 			pr_info("%s: dimming disable: %lu\n", __func__,
 				fade_time);
@@ -206,23 +157,17 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 		i2c_smbus_write_byte_data(
 		    lm3533_client,
 		    LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL, 0x00);
+	} else {
+		i2c_smbus_write_i2c_block_data(lm3533_client,
+					       LM3533_PATTERN_GENERATOR_1_DELAY,
+					       6, fade_data);
+		i2c_smbus_write_i2c_block_data(lm3533_client,
+					       LM3533_PATTERN_GENERATOR_2_DELAY,
+					       6, fade_data);
+		i2c_smbus_write_i2c_block_data(lm3533_client,
+					       LM3533_PATTERN_GENERATOR_3_DELAY,
+					       6, fade_data);
 	}
-	return count;
-}
-
-static ssize_t lm3533_runtime_fade_time_write(struct device *dev,
-					      struct device_attribute *attr,
-					      const char *buf, size_t count)
-{
-	struct led_classdev *led_cdev = dev_get_drvdata(dev);
-	static unsigned long runtime_fade_time;
-
-	if (strict_strtoul(buf, 10, &runtime_fade_time))
-		return -EINVAL;
-
-	if (log_flag_setting)
-		pr_info("%s: %s: %lu\n", __func__, led_cdev->name,
-			runtime_fade_time);
 
 	return count;
 }
@@ -351,23 +296,19 @@ static ssize_t lm3533_debug_flag_read(struct device *dev,
 static DEVICE_ATTR(debug_flag, 0644, lm3533_debug_flag_read,
 		   lm3533_debug_flag_write);
 static DEVICE_ATTR(fade_time, 0644, NULL, lm3533_fade_time_write);
-static DEVICE_ATTR(runtime_fade_time, 0644, NULL,
-		   lm3533_runtime_fade_time_write);
 static DEVICE_ATTR(rgb_brightness, 0644, NULL, lm3533_rgb_brightness_write);
 static DEVICE_ATTR(charger_brightness, 0644, NULL,
 		   lm3533_charger_brightness_write);
 static DEVICE_ATTR(blinking, 0644, NULL, lm3533_blink_write);
 
 static struct attribute *lm3533_attributes[] = {
-    &dev_attr_fade_time.attr,      &dev_attr_runtime_fade_time.attr,
-    &dev_attr_rgb_brightness.attr, &dev_attr_debug_flag.attr,
-    &dev_attr_blinking.attr,       NULL};
+    &dev_attr_fade_time.attr, &dev_attr_rgb_brightness.attr,
+    &dev_attr_debug_flag.attr, &dev_attr_blinking.attr, NULL};
 
 static struct attribute_group lm3533_attribute_group = {.attrs =
 							    lm3533_attributes};
 
 static struct attribute *lm3533_backlight_attributes[] = {
-    &dev_attr_fade_time.attr, &dev_attr_runtime_fade_time.attr,
     &dev_attr_charger_brightness.attr, NULL};
 
 static struct attribute_group lm3533_backlight_attribute_group = {
