@@ -100,9 +100,6 @@ struct lm3533_data {
 	struct lm3533_led_data leds[LM3533_LEDS_MAX];
 };
 
-// 20131121 tracy add for change sns led color as theme color ++
-static int theme_color = 27903; // 20131125 tracy add initial value for spec
-// 20131121 tracy add for change sns led color as theme color --
 static ssize_t lm3533_fade_time_write(struct device *dev,
 				      struct device_attribute *attr,
 				      const char *buf, size_t count)
@@ -296,55 +293,6 @@ static ssize_t lm3533_blink_write(struct device *dev,
 	return count;
 }
 // 20130924 tracy add for SNS and notification blue led dimming--
-// 20131121 tracy add for change sns led color as theme color ++
-static ssize_t lm3533_theme_write(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	static unsigned long theme;
-
-	if (strict_strtoul(buf, 10, &theme))
-		return -EINVAL;
-
-	theme_color = theme;
-
-	printk(KERN_EMERG "%s:  %d \n", __func__, theme_color);
-
-	return count;
-}
-
-static ssize_t lm3533_button2_write(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
-{
-	static unsigned long button2;
-	u8 button2_data[3];
-	if (strict_strtoul(buf, 10, &button2))
-		return -EINVAL;
-	if (button2 == 1) {
-		printk(KERN_EMERG "%s: on  %d \n", __func__, theme_color);
-		button2_data[0] =
-		    brightness_table[(theme_color >> 16) &
-				     255]; // red led    (SNS light setting)
-		button2_data[1] = brightness_table[(theme_color >> 8) & 255];
-		button2_data[2] = brightness_table[(theme_color)&255];
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_BRIGHTNESS_REGISTER_C, 3,
-					       button2_data);
-	} else {
-		printk(KERN_EMERG "%s: off \n", __func__);
-		button2_data[0] =
-		    brightness_table[(0x00) &
-				     255]; // red led    (SNS light setting)
-		button2_data[1] = brightness_table[(0x00) & 255];
-		button2_data[2] = brightness_table[(0x00) & 255];
-		i2c_smbus_write_i2c_block_data(lm3533_client,
-					       LM3533_BRIGHTNESS_REGISTER_C, 3,
-					       button2_data);
-	}
-	return count;
-}
-// 20131121 tracy add for change sns led color as theme color --
 
 static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 					   struct device_attribute *attr,
@@ -450,17 +398,12 @@ static DEVICE_ATTR(charger_brightness, 0644, NULL,
 		   lm3533_charger_brightness_write);
 // 20130924 tracy add for SNS and notification blue led dimming++
 static DEVICE_ATTR(blinking, 0644, NULL, lm3533_blink_write);
-// 20131121 tracy add for change sns led color as theme color ++
-static DEVICE_ATTR(theme, 0644, NULL, lm3533_theme_write);
-static DEVICE_ATTR(button2, 0644, NULL, lm3533_button2_write);
 
 static struct attribute *lm3533_attributes[] = {
     &dev_attr_fade_time.attr,      &dev_attr_runtime_fade_time.attr,
     &dev_attr_rgb_brightness.attr, &dev_attr_debug_flag.attr,
-    &dev_attr_blinking.attr,       &dev_attr_theme.attr,
-    &dev_attr_button2.attr,	NULL
+    &dev_attr_blinking.attr,       NULL
 };
-// 20131121 tracy add for change sns led color as theme color --
 // 20130924 tracy add for SNS and notification blue led dimming--
 
 static struct attribute_group lm3533_attribute_group = {
