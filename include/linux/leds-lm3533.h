@@ -11,14 +11,13 @@
 
 #ifndef __LINUX_LEDS_LM3533_H
 #define __LINUX_LEDS_LM3533_H
-////20130722 tracy add for notification led++
-#define LM3533_LED0 0
-#define LM3533_LED1 1
-#define LM3533_LED2 2
-#define LM3533_LEDS_MAX 3
-////20130722 tracy add for notification led--
-#define LM3533_LED_STATUS_MASK 0x03
 
+#define LM3533_SNS 0
+#define LM3533_NOTIFICATION 1
+#define LM3533_BACKLIGHT 2
+#define LM3533_LEDS_MAX 3
+
+#define LM3533_LED_STATUS_MASK 0x03
 #define LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION1 0x10
 #define LM3533_CURRENT_SINK_OUTPUT_CONFIGURATION2 0x11
 #define LM3533_STARTUP_SHUTDOWN_RAMP_RATES 0x12
@@ -132,8 +131,6 @@ enum lm3533_rgb_brightness {
 
 struct lm3533_platform_data {
 	struct lm3533_led leds[LM3533_LEDS_MAX];
-	int hwint_gpio;
-	int hwint_gpio_flag;
 	u8 leds_size;
 };
 
