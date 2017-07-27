@@ -172,35 +172,6 @@ static ssize_t lm3533_fade_time_write(struct device *dev,
 	return count;
 }
 
-static ssize_t lm3533_blink_write(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	static unsigned long blinking;
-	u8 blink_data[6];
-
-	if (strict_strtoul(buf, 10, &blinking))
-		return -EINVAL;
-
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_BRIGHTNESS_REGISTER_F,
-				  0xFF);
-	i2c_smbus_write_byte_data(lm3533_client, LM3533_CONTROL_ENABLE, 0x21);
-	blink_data[0] = 0x62;
-	blink_data[1] = 0x62;
-	blink_data[2] = 0x07;
-	blink_data[3] = 0x00;
-	blink_data[4] = 0x00;
-	blink_data[5] = 0x00;
-
-	i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_4_DELAY, 6, blink_data);
-	i2c_smbus_write_byte_data(
-	    lm3533_client, LM3533_PATTERN_GENERATOR_ENABLE_ALS_SCALING_CONTROL,
-	    0xC0);
-
-	return count;
-}
-
 static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 					   struct device_attribute *attr,
 					   const char *buf, size_t count)
@@ -272,22 +243,20 @@ static DEVICE_ATTR(debug_flag, 0644, lm3533_debug_flag_read,
 		   lm3533_debug_flag_write);
 static DEVICE_ATTR(fade_time, 0644, NULL, lm3533_fade_time_write);
 static DEVICE_ATTR(rgb_brightness, 0644, NULL, lm3533_rgb_brightness_write);
-static DEVICE_ATTR(blinking, 0644, NULL, lm3533_blink_write);
 
 static struct attribute *lm3533_sns_attributes[] = {
     &dev_attr_fade_time.attr, &dev_attr_rgb_brightness.attr,
-    &dev_attr_debug_flag.attr, &dev_attr_blinking.attr, NULL};
-static struct attribute *lm3533_notification_attributes[] = {
-    &dev_attr_blinking.attr, &dev_attr_debug_flag.attr, NULL};
-static struct attribute *lm3533_backlight_attributes[] = {
+    &dev_attr_debug_flag.attr, NULL};
+
+static struct attribute *lm3533_common_attributes[] = {
     &dev_attr_debug_flag.attr, NULL};
 
 static struct attribute_group lm3533_sns_attribute_group = {
     .attrs = lm3533_sns_attributes};
 static struct attribute_group lm3533_notification_attribute_group = {
-    .attrs = lm3533_notification_attributes};
+    .attrs = lm3533_common_attributes};
 static struct attribute_group lm3533_backlight_attribute_group = {
-    .attrs = lm3533_backlight_attributes};
+    .attrs = lm3533_common_attributes};
 
 static int lm3533_led_set(struct lm3533_led_data *led, unsigned long brightness)
 {
