@@ -915,12 +915,10 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 			idx += 3;
 		} // end for
 
-		if (reported)
-			input_sync(idev);
-		else {
+		if (!reported)
 			input_mt_sync(idev);
-			input_sync(idev);
-		}
+		input_sync(idev);
+
 		break;
 
 	default:
@@ -1499,6 +1497,11 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 		return 0;
 
 	disable_irq(client->irq);
+
+	input_report_key(ts->input_dev, BTN_TOUCH, 0);
+	input_mt_sync(ts->input_dev);
+	input_sync(ts->input_dev);
+
 	flush_work(&ts->work);
 	cancel_delayed_work_sync(&ts->check_work);
 	elan_ktf2k_ts_set_power_state(client, PWR_STATE_DEEP_SLEEP);
