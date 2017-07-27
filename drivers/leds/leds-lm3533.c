@@ -68,7 +68,7 @@ struct lm3533_led_data {
 	u8 id;
 	int lm3533_led_brightness;
 	unsigned long fade_time;
-	unsigned long lm3533_rgb_brightness;
+	unsigned long rgb_brightness;
 	struct led_classdev ldev;
 	struct i2c_client *client;
 	struct delayed_work thread;
@@ -179,40 +179,54 @@ static ssize_t lm3533_rgb_brightness_write(struct device *dev,
 	struct led_classdev *led_cdev = dev_get_drvdata(dev);
 	struct lm3533_led_data *led =
 	    container_of(led_cdev, struct lm3533_led_data, ldev);
-	u8 sns_data[3];
+	u8 rgb_data[3];
 	static unsigned long rgb_brightness;
 
 	if (strict_strtoul(buf, 10, &rgb_brightness))
 		return -EINVAL;
 
-	led->lm3533_rgb_brightness = rgb_brightness;
-
-	if (log_flag_setting)
-		pr_info("%s: %s: %lu\n", __func__, led_cdev->name,
-			rgb_brightness);
+	led->rgb_brightness = rgb_brightness;
 
 	// This function is for keep on time
 	cancel_delayed_work_sync(&led->thread_register_keep);
 	cancel_delayed_work_sync(&led->thread_set_keep);
 
-	sns_data[0] = brightness_table[(rgb_brightness >> 16) & 255];
-	sns_data[1] = brightness_table[(rgb_brightness >> 8) & 255];
-	sns_data[2] = brightness_table[(rgb_brightness)&255];
+	rgb_data[0] = brightness_table[(led->rgb_brightness >> 16) & 255];
+	rgb_data[1] = brightness_table[(led->rgb_brightness >> 8) & 255];
+	rgb_data[2] = brightness_table[(led->rgb_brightness) & 255];
 
 	i2c_smbus_write_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
-	memset(sns_data, 0, 3);
+	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, rgb_data);
+	memset(rgb_data, 0, 3);
 	i2c_smbus_read_i2c_block_data(
-	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, sns_data);
+	    lm3533_client, LM3533_BRIGHTNESS_REGISTER_C, 3, rgb_data);
 
 	if (log_flag_setting)
-		pr_info("%s: sns_data[0] = [%d], sns_data[1] = [%d], "
-			"sns_data[2] = [%d]\n",
-			__func__, sns_data[0], sns_data[1], sns_data[2]);
+		pr_info("%s: RGB Number = [%lu], R/G/B = [%d/%d/%d]\n",
+			__func__, led->rgb_brightness, rgb_data[0], rgb_data[1],
+			rgb_data[2]);
 
 	queue_delayed_work(LED_WorkQueue, &led->thread, msecs_to_jiffies(10));
 
 	return count;
+}
+
+static ssize_t lm3533_rgb_brightness_read(struct device *dev,
+					  struct device_attribute *attr,
+					  char *buf)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct lm3533_led_data *led =
+	    container_of(led_cdev, struct lm3533_led_data, ldev);
+	u8 rgb_data[3];
+
+	rgb_data[0] = brightness_table[(led->rgb_brightness >> 16) & 255];
+	rgb_data[1] = brightness_table[(led->rgb_brightness >> 8) & 255];
+	rgb_data[2] = brightness_table[(led->rgb_brightness) & 255];
+
+	return sprintf(buf, "RGB Number = [%lu], R/G/B = [%d/%d/%d]\n",
+		       led->rgb_brightness, rgb_data[0], rgb_data[1],
+		       rgb_data[2]);
 }
 
 static ssize_t lm3533_debug_flag_write(struct device *dev,
@@ -242,7 +256,8 @@ static ssize_t lm3533_debug_flag_read(struct device *dev,
 static DEVICE_ATTR(debug_flag, 0644, lm3533_debug_flag_read,
 		   lm3533_debug_flag_write);
 static DEVICE_ATTR(fade_time, 0644, NULL, lm3533_fade_time_write);
-static DEVICE_ATTR(rgb_brightness, 0644, NULL, lm3533_rgb_brightness_write);
+static DEVICE_ATTR(rgb_brightness, 0644, lm3533_rgb_brightness_read,
+		   lm3533_rgb_brightness_write);
 
 static struct attribute *lm3533_sns_attributes[] = {
     &dev_attr_fade_time.attr, &dev_attr_rgb_brightness.attr,
@@ -413,7 +428,7 @@ static void lm3533_led_work(struct work_struct *work)
 	    container_of(work, struct lm3533_led_data, thread.work);
 
 	if (led->id == LM3533_SNS)
-		lm3533_led_set(led, led->lm3533_rgb_brightness);
+		lm3533_led_set(led, led->rgb_brightness);
 	else if (led->id == LM3533_NOTIFICATION)
 		lm3533_led_set(led, (unsigned long)led->lm3533_led_brightness);
 }
@@ -518,7 +533,8 @@ static int lm3533_configure(struct i2c_client *client, struct lm3533_data *data,
 		led->id = i;
 
 		led->ldev.name = pled->name;
-		led->ldev.brightness_set = lm3533_led_set_brightness;
+		if (led->id != LM3533_SNS)
+			led->ldev.brightness_set = lm3533_led_set_brightness;
 
 		INIT_DELAYED_WORK(&led->thread, lm3533_led_work);
 
