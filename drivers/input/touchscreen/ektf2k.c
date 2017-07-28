@@ -237,7 +237,7 @@ static ssize_t elan_iap_write(struct file *filp, const char *buff, size_t count,
 
 	kfree(tmp);
 
-	return (ret == 1) ? count : ret;
+	return (ret) ? count : ret;
 }
 
 ssize_t elan_iap_read(struct file *filp, char *buff, size_t count, loff_t *offp)
@@ -261,7 +261,7 @@ ssize_t elan_iap_read(struct file *filp, char *buff, size_t count, loff_t *offp)
 
 	kfree(tmp);
 
-	return (ret == 1) ? count : ret;
+	return (ret) ? count : ret;
 }
 
 static long elan_iap_ioctl(struct file *filp, unsigned int cmd,
@@ -291,7 +291,7 @@ static long elan_iap_ioctl(struct file *filp, unsigned int cmd,
 		break;
 	case IOCTL_IAP_MODE_LOCK:
 		cancel_delayed_work_sync(&private_ts->check_work); // 1218
-		if (work_lock == 0) {
+		if (!work_lock) {
 			work_lock = 1;
 			disable_irq(private_ts->client->irq);
 			flush_work(&private_ts->work);
@@ -299,7 +299,7 @@ static long elan_iap_ioctl(struct file *filp, unsigned int cmd,
 		}
 		break;
 	case IOCTL_IAP_MODE_UNLOCK:
-		if (work_lock == 1) {
+		if (work_lock) {
 			work_lock = 0;
 			enable_irq(private_ts->client->irq);
 			printk(KERN_EMERG "IOCTL_IAP_MODE_UNLOCK\n");
@@ -547,7 +547,7 @@ IAP_RESTART:
 			}
 		} // end of for(byte_count=1;byte_count<=17;byte_count++)
 
-		if (iPage == 249 || iPage == 1) {
+		if (iPage == 249 || iPage) {
 			msleep(600);
 		} else {
 			msleep(50);
@@ -846,11 +846,10 @@ static int elan_ktf2k_ts_recv_data(struct i2c_client *client, uint8_t *buf,
 static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 {
 	struct elan_ktf2k_ts_data *ts = i2c_get_clientdata(client);
-	struct input_dev *idev = ts->input_dev;
 	uint16_t x, y;
 	uint16_t fbits = 0;
 	uint8_t i, num, reported = 0;
-	uint8_t idx, btn_idx;
+	uint8_t idx;
 	int finger_num;
 
 	/* for 10 fingers	*/
@@ -860,7 +859,6 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 		fbits = buf[2] & 0x30;
 		fbits = (fbits << 4) | buf[1];
 		idx = 3;
-		btn_idx = 33;
 	}
 	/* for 5 fingers	*/
 	else if ((buf[0] == MTK_FINGERS_PKT) || (buf[0] == FIVE_FINGERS_PKT)) {
@@ -868,7 +866,6 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 		num = buf[1] & 0x07;
 		fbits = buf[1] >> 3;
 		idx = 2;
-		btn_idx = 17;
 	}
 	/* for 2 fingers */
 	else {
@@ -877,14 +874,9 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 		      0x03; // for elan old 5A protocol the finger ID is 0x06
 		fbits = buf[7] & 0x03;
 		idx = 1;
-		btn_idx = 7;
 	}
 
 	switch (buf[0]) {
-	case 0x78: // chip may reset due to watch dog
-	case 0x66: // calibration packet type
-	case 0x55: // chip may reset due to watch dog
-		break;
 	case MTK_FINGERS_PKT:
 	case TWO_FINGERS_PKT:
 	case FIVE_FINGERS_PKT:
@@ -900,14 +892,13 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 				if (!((x <= 0) || (y <= 0) ||
 				      (x >= LCM_X_RESOLUTION) ||
 				      (y >= LCM_Y_RESOLUTION))) {
-					input_report_abs(idev,
+					input_report_abs(ts->input_dev,
 							 ABS_MT_TOUCH_MAJOR, 8);
-					input_report_abs(idev,
+					input_report_abs(ts->input_dev,
 							 ABS_MT_POSITION_X, x);
-					input_report_abs(idev,
+					input_report_abs(ts->input_dev,
 							 ABS_MT_POSITION_Y, y);
-					input_report_key(idev, BTN_TOUCH, 1);
-					input_mt_sync(idev);
+					input_mt_sync(ts->input_dev);
 					reported++;
 				} // end if border
 			}	 // end if finger status
@@ -916,8 +907,8 @@ static void elan_ktf2k_ts_report_data(struct i2c_client *client, uint8_t *buf)
 		} // end for
 
 		if (!reported)
-			input_mt_sync(idev);
-		input_sync(idev);
+			input_mt_sync(ts->input_dev);
+		input_sync(ts->input_dev);
 
 		break;
 
@@ -938,7 +929,7 @@ static void elan_ktf2k_ts_check_work_func(struct work_struct *work)
 	disable_irq(private_ts->client->irq);
 	flush_work(&private_ts->work);
 
-	if (chip_reset_flag == 0) {
+	if (!chip_reset_flag) {
 		chip_reset_flag = 1;
 		enable_irq(private_ts->client->irq);
 		return;
@@ -970,10 +961,9 @@ static void elan_ktf2k_ts_work_func(struct work_struct *work)
 		return;
 	}
 
-	// removed talking set mode
-	if (buf[0] != 0x52) {
+	if (buf[0] != 0x52 && buf[0] != 0x55 && buf[0] != 0x66 &&
+	    buf[0] != 0x78)
 		elan_ktf2k_ts_report_data(ts->client, buf);
-	}
 
 	enable_irq(ts->client->irq);
 
@@ -1325,12 +1315,7 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 
 	__set_bit(EV_ABS, ts->input_dev->evbit);
 	__set_bit(EV_KEY, ts->input_dev->evbit);
-	__set_bit(BTN_TOUCH, ts->input_dev->keybit);
 	__set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
-
-	/* For single touch */
-	input_set_abs_params(ts->input_dev, ABS_X, 0, LCM_X_RESOLUTION, 0, 0);
-	input_set_abs_params(ts->input_dev, ABS_Y, 0, LCM_Y_RESOLUTION, 0, 0);
 
 	/* For multi touch */
 	input_set_abs_params(ts->input_dev, ABS_MT_POSITION_X, 0,
@@ -1377,7 +1362,7 @@ static int elan_ktf2k_ts_probe(struct i2c_client *client,
 		printk("FW_ID is different!");
 	}
 
-	if (FW_ID == 0) {
+	if (!FW_ID) {
 		RECOVERY = 0x80;
 		Update_FW_One(client, RECOVERY);
 		FW_VERSION = New_FW_VER;
@@ -1488,17 +1473,17 @@ static int elan_ktf2k_ts_suspend(struct device *dev)
 	struct elan_ktf2k_ts_data *ts = i2c_get_clientdata(client);
 
 	// if chip in the sleep mode, we do not need to do it
-	if (tp_sleep_status == 0)
+	if (!tp_sleep_status)
 		return 0;
 
 	// The power_lock can be removed when firmware upgrade procedure will
 	// not be enter into suspend mode.
-	if (power_lock == 1)
+	if (power_lock)
 		return 0;
 
 	disable_irq(client->irq);
 
-	input_report_key(ts->input_dev, BTN_TOUCH, 0);
+	// Sync remaining touch events
 	input_mt_sync(ts->input_dev);
 	input_sync(ts->input_dev);
 
@@ -1517,12 +1502,12 @@ static int elan_ktf2k_ts_resume(struct device *dev)
 	int rc = 0;
 
 	// if chip in the resume mode, we do not need to do it
-	if (tp_sleep_status == 1)
+	if (tp_sleep_status)
 		return 0;
 
 	// The power_lock can be removed when firmware upgrade procedure will
 	// not be enter into resume mode.
-	if (power_lock == 1)
+	if (power_lock)
 		return 0;
 
 	elan_ktf2k_ts_hw_reset(private_ts->client);
